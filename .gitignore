@@ -1,0 +1,8 @@
+output/
+build/
+cmake-build-debug/
+cmake-build-release/
+.vscode/
+.venv
+diary.txt
+.idea/

@@ -5,6 +5,16 @@
 #include "config.hh"
 #include "scene.hh"
 
+#ifdef __OPENCL_VERSION__
+#define CL_GLOBAL __global
+#define CL_CONSTANT __constant
+#define CL_KERNEL __kernel
+#else
+#define CL_GLOBAL
+#define CL_CONSTANT
+#define CL_KERNEL
+#endif
+
 /*============================================================================*\
 |  Sampling functions                                                          |
 \*============================================================================*/
@@ -307,14 +317,14 @@ typedef struct
 {
     /* Acceleration structures */
     bvh tlas;
-    const tlas_instance* instances;
-    const bvh_node* node_array;
-    const bvh_link* link_array;
-    const uint* mesh_indices;
-    const float3* mesh_pos;
-    const float3* mesh_normal;
-    const float4* mesh_albedo;
-    const float4* mesh_material;
+    CL_GLOBAL const tlas_instance* instances;
+    CL_GLOBAL const bvh_node* node_array;
+    CL_GLOBAL const bvh_link* link_array;
+    CL_GLOBAL const uint* mesh_indices;
+    CL_GLOBAL const float3* mesh_pos;
+    CL_GLOBAL const float3* mesh_normal;
+    CL_GLOBAL const float4* mesh_albedo;
+    CL_GLOBAL const float4* mesh_material;
     directional_light light;
 } pt_context;
 
@@ -638,19 +648,19 @@ inline float3 path_trace_pixel(
     uint2 xy,
     int sample_index,
 
-    const subframe* subframes,
+    CL_GLOBAL const subframe* subframes,
 
     /* Acceleration structures */
-    const tlas_instance* instances,
-    const bvh_node* node_array,
-    const bvh_link* link_array,
+    CL_GLOBAL const tlas_instance* instances,
+    CL_GLOBAL const bvh_node* node_array,
+    CL_GLOBAL const bvh_link* link_array,
 
     /* Mesh buffers */
-    const uint* mesh_indices,
-    const float3* mesh_pos,
-    const float3* mesh_normal,
-    const float4* mesh_albedo,
-    const float4* mesh_material
+    CL_GLOBAL const uint* mesh_indices,
+    CL_GLOBAL const float3* mesh_pos,
+    CL_GLOBAL const float3* mesh_normal,
+    CL_GLOBAL const float4* mesh_albedo,
+    CL_GLOBAL const float4* mesh_material
 ){
     uint subframe_index = sample_index < 0 ?
         0 : sample_index / SAMPLES_PER_MOTION_BLUR_STEP;

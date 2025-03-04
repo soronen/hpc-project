@@ -11,6 +11,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lomp")
 endif()
 
+find_package(OpenCL REQUIRED)
 
 set(SOURCES
     main.cc
@@ -18,7 +19,10 @@ set(SOURCES
     mesh.cc
     bmp.cc
     scene.cc
+    opencl_utils.cpp
 )
 
 add_executable(pt ${SOURCES})
+target_include_directories(pt PRIVATE ${OpenCL_INCLUDE_DIRS})
+target_link_libraries(pt ${OpenCL_LIBRARIES})
 target_link_libraries(pt m)

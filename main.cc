@@ -4,6 +4,14 @@
 #include <clocale>
 #include <memory>
 
+#include <filesystem>
+#include <omp.h>
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
+
 // Renders the given scene into an image using path tracing.
 void baseline_render(const scene& s, uchar4* image)
 {
@@ -14,6 +22,7 @@ void baseline_render(const scene& s, uchar4* image)
 
         float3 color = {0,0,0};
 
+#pragma omp parallel for
         for(uint j = 0; j < SAMPLES_PER_PIXEL; ++j)
         {
             color += path_trace_pixel(
@@ -39,6 +48,9 @@ void baseline_render(const scene& s, uchar4* image)
 
 int main()
 {
+    // since i have my executable in /build folder
+    std::filesystem::current_path(std::filesystem::path(__FILE__).parent_path());
+
     // Make sure all text parsing is unaffected by locale
     setlocale(LC_ALL, "C");
 
@@ -47,6 +59,7 @@ int main()
     std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
 
     uint frame_count = get_animation_frame_count(s);
+    frame_count = 1; // for testing
     for(uint frame_index = 0; frame_index < frame_count; ++frame_index)
     {
         // Update scene state for the current frame & render it

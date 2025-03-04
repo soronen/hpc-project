@@ -2,7 +2,7 @@
 #define CONFIG_HH
 
 /* Fill in your student ID here. */
-#define STUDENT_ID WRITE_STUDENT_ID_HERE
+#define STUDENT_ID 152830694
 /* For the final run on the real supercomputer, comment out the following line. */
 #define TESTING
 

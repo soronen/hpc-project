@@ -6,6 +6,7 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 struct alignas(2) char2 { char x, y; };

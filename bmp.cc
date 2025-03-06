@@ -51,7 +51,7 @@ void write_bmp(
     for(uint32_t c = 0; c < 3; ++c)
         pixels[y * out_pitch + x * 3 + c] = color_data[(h-1-y) * pitch + x * stride + c];
 
-    FILE* out = fopen(name, "w");
+    FILE* out = fopen(name, "wb");
     if(!out)
     {
         fprintf(stderr, "Failed to write %s\n", name);

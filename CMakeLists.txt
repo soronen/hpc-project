@@ -3,6 +3,9 @@ project(hpc-baseline LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+#add_definitions(-DUSE_SERVER_ENV)
+
+
 # windows
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
@@ -48,4 +51,3 @@ target_link_libraries(pt PRIVATE ${OpenCL_LIBRARIES})
 if(OpenMP_CXX_FOUND)
     target_link_libraries(pt PRIVATE OpenMP::OpenMP_CXX)
 endif()
-

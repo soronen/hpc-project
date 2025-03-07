@@ -10,7 +10,6 @@
 #include <iostream>
 #include <filesystem>
 
-
 #ifdef __APPLE__
 #define CL_TARGET_OPENCL_VERSION 120
 #include <OpenCL/opencl.h>
@@ -71,7 +70,6 @@ struct OpenCLBuffers
     cl_mem mesh_material;
     cl_mem accumulation_buffer;
 };
-
 
 OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_context)
 {
@@ -439,18 +437,19 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
     clReleaseEvent(readback_event);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     // MPI initialization
     int rank = 0;
     int world_size = 1;
-    
+
 #ifdef USE_MPI
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    
-    if (rank == 0) {
+
+    if (rank == 0)
+    {
         printf("Running with MPI: %d processes\n", world_size);
     }
 #endif
@@ -467,12 +466,12 @@ int main(int argc, char** argv)
     // Distribute frames among MPI ranks when using MPI
     uint start_frame = 0;
     uint end_frame = frame_count;
-    
+
 #ifdef USE_MPI
     uint frames_per_rank = frame_count / world_size;
     start_frame = rank * frames_per_rank;
     end_frame = (rank == world_size - 1) ? frame_count : start_frame + frames_per_rank;
-    
+
     // Each rank only reports its own range
     printf("Rank %d processing frames %u to %u\n", rank, start_frame, end_frame - 1);
 #endif
@@ -483,14 +482,41 @@ int main(int argc, char** argv)
     // Initialize available OpenCL devices
     std::vector<OpenCLContext> gpu_contexts = initializeOpenCLDevices();
     bool use_opencl = !gpu_contexts.empty();
-    
+
+#ifndef USE_SERVER_ENV
+    // Filter for NVIDIA GPUs only when running locally
+    std::vector<OpenCLContext> filtered_contexts;
+    for (const auto &context : gpu_contexts)
+    {
+        cl_device_type device_type;
+        char vendor[256];
+        clGetDeviceInfo(context.deviceId, CL_DEVICE_TYPE, sizeof(device_type), &device_type, NULL);
+        clGetDeviceInfo(context.deviceId, CL_DEVICE_VENDOR, sizeof(vendor), vendor, NULL);
+
+        std::string vendor_str(vendor);
+        if (vendor_str.find("NVIDIA") != std::string::npos)
+        {
+            filtered_contexts.push_back(context);
+            printf("Selected NVIDIA GPU: %s\n", vendor);
+        }
+    }
+    gpu_contexts = filtered_contexts;
+    use_opencl = !gpu_contexts.empty();
+#else
+    // When on server, HIP will be used for AMD GPUs
+    // HIP initialization code would go here if using HIP directly
+    // For now, we keep all OpenCL contexts as they're already filtered by initializeOpenCLDevices()
+    printf("Running in server environment with all available GPUs\n");
+#endif
+
 #ifdef USE_MPI
     // Collect total GPU count across all ranks
     int local_gpu_count = gpu_contexts.size();
     int total_gpu_count = 0;
     MPI_Reduce(&local_gpu_count, &total_gpu_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    
-    if (rank == 0) {
+
+    if (rank == 0)
+    {
         printf("Total GPUs across all ranks: %d\n", total_gpu_count);
     }
 #endif
@@ -502,20 +528,24 @@ int main(int argc, char** argv)
     std::vector<cl_kernel> reset_accumulation_kernels(gpu_contexts.size());
     std::vector<std::array<OpenCLBuffers, 2>> gpu_buffers(gpu_contexts.size());
 
-    for (size_t i = 0; i < gpu_contexts.size(); i++) {
-        try {
+    for (size_t i = 0; i < gpu_contexts.size(); i++)
+    {
+        try
+        {
             path_trace_kernels[i] = createKernel(gpu_contexts[i], "path_trace_pixel_kernel");
             tonemap_kernels[i] = createKernel(gpu_contexts[i], "tonemap_kernel");
             path_trace_sample_kernels[i] = createKernel(gpu_contexts[i], "path_trace_sample_kernel");
             reset_accumulation_kernels[i] = createKernel(gpu_contexts[i], "reset_accumulation_kernel");
-            
+
             gpu_buffers[i][0] = create_render_buffers(s, gpu_contexts[i]);
             gpu_buffers[i][1] = create_render_buffers(s, gpu_contexts[i]);
-            
+
             char device_name[256];
             clGetDeviceInfo(gpu_contexts[i].deviceId, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
             printf("Rank %d initialized GPU %zu: %s\n", rank, i, device_name);
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception &e)
+        {
             printf("Failed to initialize GPU %zu: %s\n", i, e.what());
         }
     }
@@ -523,30 +553,36 @@ int main(int argc, char** argv)
     std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
 
     // Process frames assigned to this rank
-    for (uint frame_index = start_frame; frame_index < end_frame; ++frame_index) {
+    for (uint frame_index = start_frame; frame_index < end_frame; ++frame_index)
+    {
         // Select which GPU to use for this frame (round-robin)
         int gpu_index = 0;
-        if (gpu_contexts.size() > 0) {
+        if (gpu_contexts.size() > 0)
+        {
             gpu_index = (frame_index - start_frame) % gpu_contexts.size();
         }
-        
-        if (use_opencl && gpu_index < gpu_contexts.size()) {
+
+        if (use_opencl && gpu_index < gpu_contexts.size())
+        {
             int current_buffer = 0;
             int next_buffer = 1;
-            
+
             // Prepare current frame
             setup_animation_frame(s, frame_index);
             std::array<cl_event, 9> update_events = update_render_buffers(s, gpu_buffers[gpu_index][current_buffer], gpu_contexts[gpu_index]);
             clWaitForEvents(update_events.size(), update_events.data());
-            for (cl_event &event : update_events) {
+            for (cl_event &event : update_events)
+            {
                 clReleaseEvent(event);
             }
-            
+
             // Render the frame
             opencl_render(s, image.get(), gpu_contexts[gpu_index], gpu_buffers[gpu_index][current_buffer],
                           path_trace_kernels[gpu_index], tonemap_kernels[gpu_index],
                           path_trace_sample_kernels[gpu_index], reset_accumulation_kernels[gpu_index]);
-        } else {
+        }
+        else
+        {
             setup_animation_frame(s, frame_index);
             baseline_render(s, image.get());
         }
@@ -555,7 +591,7 @@ int main(int argc, char** argv)
         std::string index_str = std::to_string(frame_index);
         while (index_str.size() < 4)
             index_str.insert(index_str.begin(), '0');
-        
+
 #ifdef USE_MPI
         // Each rank writes to its own output directory
         std::string output_dir = "output/rank_" + std::to_string(rank);
@@ -566,13 +602,16 @@ int main(int argc, char** argv)
 #endif
 
         // Write output image
-        write_bmp(output_path.c_str(), IMAGE_WIDTH, IMAGE_HEIGHT, 4, IMAGE_WIDTH * 4, (uint8_t*)image.get());
+        write_bmp(output_path.c_str(), IMAGE_WIDTH, IMAGE_HEIGHT, 4, IMAGE_WIDTH * 4, (uint8_t *)image.get());
     }
 
     // Release OpenCL resources
-    if (use_opencl) {
-        for (size_t g = 0; g < gpu_contexts.size(); g++) {
-            for (int i = 0; i < 2; i++) {
+    if (use_opencl)
+    {
+        for (size_t g = 0; g < gpu_contexts.size(); g++)
+        {
+            for (int i = 0; i < 2; i++)
+            {
                 clReleaseMemObject(gpu_buffers[g][i].output_image);
                 clReleaseMemObject(gpu_buffers[g][i].colors);
                 clReleaseMemObject(gpu_buffers[g][i].subframes);
@@ -586,12 +625,12 @@ int main(int argc, char** argv)
                 clReleaseMemObject(gpu_buffers[g][i].mesh_material);
                 clReleaseMemObject(gpu_buffers[g][i].accumulation_buffer);
             }
-            
+
             clReleaseKernel(path_trace_kernels[g]);
             clReleaseKernel(tonemap_kernels[g]);
             clReleaseKernel(path_trace_sample_kernels[g]);
             clReleaseKernel(reset_accumulation_kernels[g]);
-            
+
             clReleaseProgram(gpu_contexts[g].program);
             clReleaseCommandQueue(gpu_contexts[g].commandQueue);
             clReleaseContext(gpu_contexts[g].context);

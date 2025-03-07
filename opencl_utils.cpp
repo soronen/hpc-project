@@ -202,3 +202,92 @@ void printDeviceInfo(cl_platform_id platform, cl_device_id device)
 
     std::cout << "Device: " << infoStr.data() << " on platform " << platform << std::endl;
 }
+
+
+cl_program buildProgramForDevice(cl_context context, const std::string& source, cl_device_id device) {
+    cl_int err;
+    const char* source_cstr = source.c_str();
+    size_t source_size = source.size();
+    
+    cl_program program = clCreateProgramWithSource(context, 1, &source_cstr, &source_size, &err);
+    if (err != CL_SUCCESS) {
+        printf("Error creating program: %d\n", err);
+        return NULL;
+    }
+    
+    err = clBuildProgram(program, 1, &device, "-I .", NULL, NULL);
+    if (err != CL_SUCCESS) {
+        size_t log_size;
+        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+        std::vector<char> log(log_size);
+        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log_size, log.data(), NULL);
+        printf("Error building program: %s\n", log.data());
+        clReleaseProgram(program);
+        return NULL;
+    }
+    
+    return program;
+}
+
+
+
+std::vector<OpenCLContext> initializeOpenCLDevices() {
+    std::vector<OpenCLContext> contexts;
+    cl_uint num_platforms;
+    cl_int err;
+    
+    // Get platforms
+    err = clGetPlatformIDs(0, NULL, &num_platforms);
+    if (err != CL_SUCCESS || num_platforms == 0) {
+        printf("No OpenCL platforms found\n");
+        return contexts;
+    }
+    
+    std::vector<cl_platform_id> platforms(num_platforms);
+    err = clGetPlatformIDs(num_platforms, platforms.data(), NULL);
+    
+    // For each platform, get devices
+    for (cl_uint p = 0; p < num_platforms; p++) {
+        cl_uint num_devices;
+        err = clGetDeviceIDs(platforms[p], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+        if (err != CL_SUCCESS || num_devices == 0) continue;
+        
+        std::vector<cl_device_id> devices(num_devices);
+        err = clGetDeviceIDs(platforms[p], CL_DEVICE_TYPE_GPU, num_devices, devices.data(), NULL);
+        
+        // Create context and command queue for each device
+        for (cl_uint d = 0; d < num_devices; d++) {
+            cl_context_properties props[] = {
+                CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[p],
+                0
+            };
+            
+            cl_context context = clCreateContext(props, 1, &devices[d], NULL, NULL, &err);
+            if (err != CL_SUCCESS) continue;
+            
+            cl_command_queue queue = clCreateCommandQueue(context, devices[d], 0, &err);
+            if (err != CL_SUCCESS) {
+                clReleaseContext(context);
+                continue;
+            }
+            
+            // Create program for this device
+            std::string source = readFile("path_tracer.cl");
+            cl_program program = buildProgramForDevice(context, source, devices[d]);
+            
+            OpenCLContext deviceContext;
+            deviceContext.context = context;
+            deviceContext.commandQueue = queue;
+            deviceContext.deviceId = devices[d];
+            deviceContext.program = program;
+            contexts.push_back(deviceContext);
+            
+            // Log device info
+            char device_name[256];
+            clGetDeviceInfo(devices[d], CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
+            printf("Found GPU device: %s\n", device_name);
+        }
+    }
+    
+    return contexts;
+}

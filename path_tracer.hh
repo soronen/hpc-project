@@ -9,24 +9,26 @@
 #define CL_GLOBAL __global
 #define CL_CONSTANT __constant
 #define CL_KERNEL __kernel
+#define CL_INLINE static inline
 #else
 #define CL_GLOBAL
 #define CL_CONSTANT
 #define CL_KERNEL
+#define CL_INLINE inline
 #endif
 
 /*============================================================================*\
 |  Sampling functions                                                          |
 \*============================================================================*/
 
-inline float sample_gaussian(float u, float sigma, float epsilon)
+CL_INLINE float sample_gaussian(float u, float sigma, float epsilon)
 {
     float k = u * 2.0f - 1.0f;
     k = clamp(k, -(1.0f-epsilon), 1.0f-epsilon);
     return sigma * 1.41421356f * inv_erf(k);
 }
 
-inline float2 sample_gaussian_weighted_disk(float2 u, float sigma)
+CL_INLINE float2 sample_gaussian_weighted_disk(float2 u, float sigma)
 {
     float r = sqrt(u.x);
     float theta = 2.0f * (float)M_PI * u.y;
@@ -34,7 +36,7 @@ inline float2 sample_gaussian_weighted_disk(float2 u, float sigma)
     return r * (float2){(float)cos(theta), (float)sin(theta)};
 }
 
-inline float3 sample_cosine_hemisphere(float2 u)
+CL_INLINE float3 sample_cosine_hemisphere(float2 u)
 {
     float r = sqrt(u.x);
     float theta = 2.0f * (float)M_PI * u.y;
@@ -42,12 +44,12 @@ inline float3 sample_cosine_hemisphere(float2 u)
     return (float3){d.x, d.y, (float)sqrt(fmax(0.0f, 1.0f - dot(d, d)))};
 }
 
-inline float cosine_hemisphere_pdf(float3 dir)
+CL_INLINE float cosine_hemisphere_pdf(float3 dir)
 {
     return fmax(dir.z * (1.0f/(float)M_PI), 0.0f);
 }
 
-inline float3 sample_cone(float3 dir, float cos_theta_min, float2 u)
+CL_INLINE float3 sample_cone(float3 dir, float cos_theta_min, float2 u)
 {
     float cos_theta = mix(1.0f, cos_theta_min, u.x);
     float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
@@ -57,7 +59,7 @@ inline float3 sample_cone(float3 dir, float cos_theta_min, float2 u)
     });
 }
 
-inline float2 sample_regular_polygon(float2 u, float angle, uint sides)
+CL_INLINE float2 sample_regular_polygon(float2 u, float angle, uint sides)
 {
     float side = floor(u.x * sides);
     u.x *= sides;
@@ -74,7 +76,7 @@ inline float2 sample_regular_polygon(float2 u, float angle, uint sides)
 /* Derived from:
  * https://arxiv.org/pdf/2306.05044.pdf
  */
-inline float3 sample_ggx_vndf(float3 view, float roughness, float2 u)
+CL_INLINE float3 sample_ggx_vndf(float3 view, float roughness, float2 u)
 {
     if(roughness < 1e-3f)
         return (float3){0,0,1};
@@ -96,7 +98,7 @@ inline float3 sample_ggx_vndf(float3 view, float roughness, float2 u)
 |  Materials                                                                   |
 \*============================================================================*/
 
-inline float fresnel_schlick_bidir_attenuated(float v_dot_h, float f0, float eta, float roughness)
+CL_INLINE float fresnel_schlick_bidir_attenuated(float v_dot_h, float f0, float eta, float roughness)
 {
     if(eta > 1.0f)
     {
@@ -107,19 +109,19 @@ inline float fresnel_schlick_bidir_attenuated(float v_dot_h, float f0, float eta
     return f0 + (fmax(1.0f - roughness, f0) - f0) * pow(fmax(1.0f - v_dot_h, 0.0f), 5.0f);
 }
 
-inline float fresnel_schlick_bidir(float v_dot_h, float f0, float eta)
+CL_INLINE float fresnel_schlick_bidir(float v_dot_h, float f0, float eta)
 {
     return fresnel_schlick_bidir_attenuated(v_dot_h, f0, eta, 0);
 }
 
-inline float trowbridge_reitz_distribution(float hdotn, float a)
+CL_INLINE float trowbridge_reitz_distribution(float hdotn, float a)
 {
     float a2 = a * a;
     float denom = hdotn * hdotn * (a2 - 1.0f) + 1.0f;
     return a2 / fmax((float)M_PI * denom * denom, 1e-10f);
 }
 
-inline float trowbridge_reitz_masking_shadowing(
+CL_INLINE float trowbridge_reitz_masking_shadowing(
     float ldotn, float ldoth,
     float vdotn, float vdoth,
     float a
@@ -132,13 +134,13 @@ inline float trowbridge_reitz_masking_shadowing(
     );
 }
 
-inline float trowbridge_reitz_masking(float vdotn, float vdoth, float a)
+CL_INLINE float trowbridge_reitz_masking(float vdotn, float vdoth, float a)
 {
     if(vdotn * vdoth < 0) return 0;
     return 2.0f * vdotn / (vdotn + sqrt(vdotn * vdotn * (1.0f - a * a) + a * a));
 }
 
-inline float3 bsdf_core(
+CL_INLINE float3 bsdf_core(
     float3 light,
     float3 h,
     float3 view,
@@ -191,7 +193,7 @@ inline float3 bsdf_core(
 }
 
 /* Tangent-space BSDF */
-inline float3 bsdf(
+CL_INLINE float3 bsdf(
     float3 light,
     float3 view,
     float3 albedo,
@@ -231,7 +233,7 @@ inline float3 bsdf(
     return attenuation;
 }
 
-inline void sample_bsdf(
+CL_INLINE void sample_bsdf(
     float3 u,
     float3 view,
     float3 albedo,
@@ -347,7 +349,7 @@ typedef struct
     float nee_pdf;
 } hit_info;
 
-inline hit_info trace_ray(pt_context ctx, float3 origin, float3 dir, float tmin)
+CL_INLINE hit_info trace_ray(pt_context ctx, float3 origin, float3 dir, float tmin)
 {
     ray_query rq = ray_query_initialize(
         ctx.tlas, ctx.instances, ctx.node_array, ctx.link_array,
@@ -422,7 +424,7 @@ inline hit_info trace_ray(pt_context ctx, float3 origin, float3 dir, float tmin)
 }
 
 /* Shadowed if true. */
-inline bool trace_shadow_ray(
+CL_INLINE bool trace_shadow_ray(
     pt_context ctx,
     float3 origin,
     float3 dir,
@@ -436,7 +438,7 @@ inline bool trace_shadow_ray(
     return ray_query_proceed(&rq);
 }
 
-inline void get_camera_ray(camera cam, float2 u, float2 coord, float3* dir, float3* origin)
+CL_INLINE void get_camera_ray(camera cam, float2 u, float2 coord, float3* dir, float3* origin)
 {
     float2 uv = (float2){coord.x, coord.y} / (float2){IMAGE_WIDTH, IMAGE_HEIGHT} * 2.0f - 1.0f;
     uv.x *= cam.aspect_ratio;
@@ -463,7 +465,7 @@ inline void get_camera_ray(camera cam, float2 u, float2 coord, float3* dir, floa
 |  Sky ray marching                                                            |
 \*============================================================================*/
 
-inline float3 nishita_atmosphere_attenuation(
+CL_INLINE float3 nishita_atmosphere_attenuation(
     float jitter,
     int iterations,
     float3 pos,
@@ -506,7 +508,7 @@ inline float3 nishita_atmosphere_attenuation(
     return attenuation;
 }
 
-inline void nishita_atmosphere_scattering(
+CL_INLINE void nishita_atmosphere_scattering(
     uint4* seed,
     pt_context ctx,
     float3 pos,
@@ -601,7 +603,7 @@ inline void nishita_atmosphere_scattering(
 |  Core path tracer                                                            |
 \*============================================================================*/
 
-inline float3 nee_branch(uint4* seed, pt_context ctx, hit_info info, float3 tview)
+CL_INLINE float3 nee_branch(uint4* seed, pt_context ctx, hit_info info, float3 tview)
 {
     float4 u = generate_uniform_random4(seed);
     float3 light_dir = sample_cone(ctx.light.direction, ctx.light.cos_solid_angle, (float2){u.x, u.y});
@@ -644,7 +646,7 @@ inline float3 nee_branch(uint4* seed, pt_context ctx, hit_info info, float3 tvie
  *     mesh_albedo: surface colors for vertices of all meshes (from mesh_buffers)
  *     mesh_material: surface materials for vertices of all meshes (from mesh_buffers)
  */
-inline float3 path_trace_pixel(
+CL_INLINE float3 path_trace_pixel(
     uint2 xy,
     int sample_index,
 
@@ -760,7 +762,7 @@ inline float3 path_trace_pixel(
  *     color: averaged color output of path_trace_pixel
  * Returns the tonemapped color as an 8-bit BGRA color.
  */
-inline uchar4 tonemap_pixel(float3 color)
+CL_INLINE uchar4 tonemap_pixel(float3 color)
 {
     /* Simplistic ACES fit */
     color = (color * (2.51f * color + 0.03f)) / (color * (2.43f * color + 0.59f) + 0.14f);

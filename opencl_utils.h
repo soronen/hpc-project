@@ -1,7 +1,5 @@
 #pragma once
 
-// For macOS, this is typically:
-// #include <OpenCL/cl.h>
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #else
@@ -39,3 +37,8 @@ void printPlatformInfo();
 
 // (Optional) print device information
 void printDeviceInfo(cl_platform_id platform, cl_device_id device);
+
+
+std::vector<OpenCLContext> initializeOpenCLDevices();
+
+cl_program buildProgramForDevice(cl_context context, const std::string& source, cl_device_id device);

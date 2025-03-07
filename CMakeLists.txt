@@ -21,6 +21,15 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -march=native")
 endif()
 
+option(USE_MPI "Build with MPI support" OFF)
+
+if(USE_MPI)
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
+    add_definitions(-DUSE_MPI)
+    set(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_LIBRARIES})
+endif()
+
 find_package(OpenCL REQUIRED)
 
 set(SOURCES

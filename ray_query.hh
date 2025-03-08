@@ -3,11 +3,11 @@
 #include "bvh.hh"
 
 #ifdef __OPENCL_VERSION__
-#define CL_GLOBAL __global
+#define CL_GLOBAL_ __global
 #define CL_CONSTANT __constant
 #define CL_KERNEL __kernel
 #else
-#define CL_GLOBAL
+#define CL_GLOBAL_
 #define CL_CONSTANT
 #define CL_KERNEL
 #endif
@@ -76,11 +76,11 @@ typedef struct
 typedef struct
 {
     /* Collection of buffers needed during traversal. */
-    CL_GLOBAL const bvh_node* node_array;
-    CL_GLOBAL const bvh_link* link_array;
-    CL_GLOBAL const tlas_instance* instances;
-    CL_GLOBAL const uint* mesh_indices;
-    CL_GLOBAL const float3* mesh_pos;
+    CL_GLOBAL_ const bvh_node* node_array;
+    CL_GLOBAL_ const bvh_link* link_array;
+    CL_GLOBAL_ const tlas_instance* instances;
+    CL_GLOBAL_ const uint* mesh_indices;
+    CL_GLOBAL_ const float3* mesh_pos;
 
     /* Both TLAS and BLAS contexts are active simultaneously: when there's a
      * hit in TLAS, BLAS traversal begins. While that is happening, the TLAS
@@ -120,11 +120,11 @@ typedef struct
 
 inline ray_query ray_query_initialize(
     bvh tlas,
-    CL_GLOBAL const tlas_instance* instances,
-    CL_GLOBAL const bvh_node* node_array,
-    CL_GLOBAL const bvh_link* link_array,
-    CL_GLOBAL const uint* mesh_indices,
-    CL_GLOBAL const float3* mesh_pos,
+    CL_GLOBAL_ const tlas_instance* instances,
+    CL_GLOBAL_ const bvh_node* node_array,
+    CL_GLOBAL_ const bvh_link* link_array,
+    CL_GLOBAL_ const uint* mesh_indices,
+    CL_GLOBAL_ const float3* mesh_pos,
     float3 origin, float3 direction,
     float tmin, float tmax
 ){
@@ -193,8 +193,8 @@ inline void ray_query_enter_blas(ray_query* rq, uint index)
 
 inline uint ray_query_traverse(
     ray_query_context* ctx,
-    CL_GLOBAL const bvh_node* node_array,
-    CL_GLOBAL const bvh_link* link_array,
+    CL_GLOBAL_ const bvh_node* node_array,
+    CL_GLOBAL_ const bvh_link* link_array,
     float tmin,
     float tmax
 ){

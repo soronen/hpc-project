@@ -1,6 +1,14 @@
 #pragma once
 
 #ifdef __APPLE__
+#define CL_TARGET_OPENCL_VERSION 120
+#include <OpenCL/opencl.h>
+#else
+#define CL_TARGET_OPENCL_VERSION 300
+#include <CL/cl.h>
+#endif
+
+#ifdef __APPLE__
 #include <OpenCL/cl.h>
 #else
 #include <CL/cl.h>

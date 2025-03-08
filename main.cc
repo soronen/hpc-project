@@ -1,7 +1,7 @@
 #include "scene.hh"
 #include "path_tracer.hh"
 #include "bmp.hh"
-#include "opencl_utils.h"
+#include "opencl_utils.hh"
 #include <omp.h>
 #include <clocale>
 #include <memory>
@@ -9,14 +9,6 @@
 #include <array>
 #include <iostream>
 #include <filesystem>
-
-#ifdef __APPLE__
-#define CL_TARGET_OPENCL_VERSION 120
-#include <OpenCL/opencl.h>
-#else
-#define CL_TARGET_OPENCL_VERSION 300
-#include <CL/cl.h>
-#endif
 
 #ifdef USE_MPI
 #include <mpi.h>

@@ -6,12 +6,12 @@
 #include "scene.hh"
 
 #ifdef __OPENCL_VERSION__
-#define CL_GLOBAL __global
+#define CL_GLOBAL_ __global
 #define CL_CONSTANT __constant
 #define CL_KERNEL __kernel
 #define CL_INLINE static inline
 #else
-#define CL_GLOBAL
+#define CL_GLOBAL_
 #define CL_CONSTANT
 #define CL_KERNEL
 #define CL_INLINE inline
@@ -319,14 +319,14 @@ typedef struct
 {
     /* Acceleration structures */
     bvh tlas;
-    CL_GLOBAL const tlas_instance* instances;
-    CL_GLOBAL const bvh_node* node_array;
-    CL_GLOBAL const bvh_link* link_array;
-    CL_GLOBAL const uint* mesh_indices;
-    CL_GLOBAL const float3* mesh_pos;
-    CL_GLOBAL const float3* mesh_normal;
-    CL_GLOBAL const float4* mesh_albedo;
-    CL_GLOBAL const float4* mesh_material;
+    CL_GLOBAL_ const tlas_instance* instances;
+    CL_GLOBAL_ const bvh_node* node_array;
+    CL_GLOBAL_ const bvh_link* link_array;
+    CL_GLOBAL_ const uint* mesh_indices;
+    CL_GLOBAL_ const float3* mesh_pos;
+    CL_GLOBAL_ const float3* mesh_normal;
+    CL_GLOBAL_ const float4* mesh_albedo;
+    CL_GLOBAL_ const float4* mesh_material;
     directional_light light;
 } pt_context;
 
@@ -650,19 +650,19 @@ CL_INLINE float3 path_trace_pixel(
     uint2 xy,
     int sample_index,
 
-    CL_GLOBAL const subframe* subframes,
+    CL_GLOBAL_ const subframe* subframes,
 
     /* Acceleration structures */
-    CL_GLOBAL const tlas_instance* instances,
-    CL_GLOBAL const bvh_node* node_array,
-    CL_GLOBAL const bvh_link* link_array,
+    CL_GLOBAL_ const tlas_instance* instances,
+    CL_GLOBAL_ const bvh_node* node_array,
+    CL_GLOBAL_ const bvh_link* link_array,
 
     /* Mesh buffers */
-    CL_GLOBAL const uint* mesh_indices,
-    CL_GLOBAL const float3* mesh_pos,
-    CL_GLOBAL const float3* mesh_normal,
-    CL_GLOBAL const float4* mesh_albedo,
-    CL_GLOBAL const float4* mesh_material
+    CL_GLOBAL_ const uint* mesh_indices,
+    CL_GLOBAL_ const float3* mesh_pos,
+    CL_GLOBAL_ const float3* mesh_normal,
+    CL_GLOBAL_ const float4* mesh_albedo,
+    CL_GLOBAL_ const float4* mesh_material
 ){
     uint subframe_index = sample_index < 0 ?
         0 : sample_index / SAMPLES_PER_MOTION_BLUR_STEP;

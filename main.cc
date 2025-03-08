@@ -762,14 +762,7 @@ int main(int argc, char **argv)
         while (index_str.size() < 4)
             index_str.insert(index_str.begin(), '0');
 
-#ifdef USE_LUMI
-        // Each rank writes to its own output directory
-        std::string output_dir = "output/rank_" + std::to_string(rank);
-        std::filesystem::create_directories(output_dir);
-        std::string output_path = output_dir + "/frame_" + index_str + ".bmp";
-#else
         std::string output_path = "output/frame_" + index_str + ".bmp";
-#endif
 
         // Write output image
         write_bmp(output_path.c_str(), IMAGE_WIDTH, IMAGE_HEIGHT, 4, IMAGE_WIDTH * 4, (uint8_t *)image.get());

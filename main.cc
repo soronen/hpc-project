@@ -75,7 +75,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                             image_size * sizeof(uchar4), NULL, &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating output image buffer: %d\n", err);
+        fprintf(stderr, "Error creating output image buffer: %d\n", err);
         exit(EXIT_FAILURE);
     }
 
@@ -84,7 +84,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                       image_size * sizeof(float3), NULL, &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating colors buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating colors buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -93,7 +93,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                          s.subframes.size() * sizeof(subframe), (void *)s.subframes.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -101,7 +101,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                          s.instances.size() * sizeof(tlas_instance), (void *)s.instances.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -109,7 +109,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                          s.bvh_buf.nodes.size() * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -117,7 +117,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                          s.bvh_buf.links.size() * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -125,7 +125,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                             s.mesh_buf.indices.size() * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -133,7 +133,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                         s.mesh_buf.pos.size() * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -141,7 +141,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                            s.mesh_buf.normal.size() * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -149,7 +149,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                            s.mesh_buf.albedo.size() * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -157,7 +157,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                              s.mesh_buf.material.size() * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -165,7 +165,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
                                             image_size * sizeof(float3), NULL, &err);
     if (err != CL_SUCCESS)
     {
-        printf("Error creating accumulation buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error creating accumulation buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -207,7 +207,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t subframes_size = s.subframes.size();
     if (subframes_size != last_subframes_size)
     {
-        printf("Recreating subframes buffer, old size: %zu, new size: %zu\n", last_subframes_size, subframes_size);
+        fprintf(stdout, "Recreating subframes buffer, old size: %zu, new size: %zu\n", last_subframes_size, subframes_size);
         if (buffers.subframes)
         {
             clReleaseMemObject(buffers.subframes);
@@ -216,7 +216,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                            subframes_size * sizeof(subframe), (void *)s.subframes.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_subframes_size = subframes_size;
@@ -228,7 +228,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    subframes_size * sizeof(subframe), s.subframes.data(), 0, NULL, &write_events[0]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -236,7 +236,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t instances_size = s.instances.size();
     if (instances_size != last_instances_size)
     {
-        printf("Recreating instances buffer, old size: %zu, new size: %zu\n", last_instances_size, instances_size);
+        fprintf(stdout, "Recreating instances buffer, old size: %zu, new size: %zu\n", last_instances_size, instances_size);
         if (buffers.instances)
         {
             clReleaseMemObject(buffers.instances);
@@ -245,7 +245,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                            instances_size * sizeof(tlas_instance), (void *)s.instances.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_instances_size = instances_size;
@@ -257,7 +257,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    instances_size * sizeof(tlas_instance), s.instances.data(), 0, NULL, &write_events[1]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -265,7 +265,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t nodes_size = s.bvh_buf.nodes.size();
     if (nodes_size != last_nodes_size)
     {
-        printf("Recreating BVH nodes buffer, old size: %zu, new size: %zu\n", last_nodes_size, nodes_size);
+        fprintf(stdout, "Recreating BVH nodes buffer, old size: %zu, new size: %zu\n", last_nodes_size, nodes_size);
         if (buffers.bvh_nodes)
         {
             clReleaseMemObject(buffers.bvh_nodes);
@@ -274,7 +274,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                            nodes_size * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_nodes_size = nodes_size;
@@ -286,7 +286,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    nodes_size * sizeof(bvh_node), s.bvh_buf.nodes.data(), 0, NULL, &write_events[2]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -294,7 +294,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t links_size = s.bvh_buf.links.size();
     if (links_size != last_links_size)
     {
-        printf("Recreating BVH links buffer, old size: %zu, new size: %zu\n", last_links_size, links_size);
+        fprintf(stdout, "Recreating BVH links buffer, old size: %zu, new size: %zu\n", last_links_size, links_size);
         if (buffers.bvh_links)
         {
             clReleaseMemObject(buffers.bvh_links);
@@ -303,7 +303,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                            links_size * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_links_size = links_size;
@@ -315,7 +315,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    links_size * sizeof(bvh_link), s.bvh_buf.links.data(), 0, NULL, &write_events[3]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -323,7 +323,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t pos_size = s.mesh_buf.pos.size();
     if (pos_size != last_pos_size)
     {
-        printf("Recreating mesh positions buffer, old size: %zu, new size: %zu\n", last_pos_size, pos_size);
+        fprintf(stdout, "Recreating mesh positions buffer, old size: %zu, new size: %zu\n", last_pos_size, pos_size);
         if (buffers.mesh_pos)
         {
             clReleaseMemObject(buffers.mesh_pos);
@@ -332,7 +332,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                           pos_size * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_pos_size = pos_size;
@@ -344,7 +344,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    pos_size * sizeof(float3), s.mesh_buf.pos.data(), 0, NULL, &write_events[4]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -352,7 +352,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t normal_size = s.mesh_buf.normal.size();
     if (normal_size != last_normal_size)
     {
-        printf("Recreating mesh normals buffer, old size: %zu, new size: %zu\n", last_normal_size, normal_size);
+        fprintf(stdout, "Recreating mesh normals buffer, old size: %zu, new size: %zu\n", last_normal_size, normal_size);
         if (buffers.mesh_normal)
         {
             clReleaseMemObject(buffers.mesh_normal);
@@ -361,7 +361,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                              normal_size * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_normal_size = normal_size;
@@ -373,7 +373,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    normal_size * sizeof(float3), s.mesh_buf.normal.data(), 0, NULL, &write_events[5]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -381,7 +381,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t indices_size = s.mesh_buf.indices.size();
     if (indices_size != last_indices_size)
     {
-        printf("Recreating mesh indices buffer, old size: %zu, new size: %zu\n", last_indices_size, indices_size);
+        fprintf(stdout, "Recreating mesh indices buffer, old size: %zu, new size: %zu\n", last_indices_size, indices_size);
         if (buffers.mesh_indices)
         {
             clReleaseMemObject(buffers.mesh_indices);
@@ -390,7 +390,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                               indices_size * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_indices_size = indices_size;
@@ -402,7 +402,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    indices_size * sizeof(uint), s.mesh_buf.indices.data(), 0, NULL, &write_events[6]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -410,7 +410,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t albedo_size = s.mesh_buf.albedo.size();
     if (albedo_size != last_albedo_size)
     {
-        printf("Recreating mesh albedo buffer, old size: %zu, new size: %zu\n", last_albedo_size, albedo_size);
+        fprintf(stdout, "Recreating mesh albedo buffer, old size: %zu, new size: %zu\n", last_albedo_size, albedo_size);
         if (buffers.mesh_albedo)
         {
             clReleaseMemObject(buffers.mesh_albedo);
@@ -419,7 +419,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                              albedo_size * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_albedo_size = albedo_size;
@@ -431,7 +431,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    albedo_size * sizeof(float4), s.mesh_buf.albedo.data(), 0, NULL, &write_events[7]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -439,7 +439,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     size_t material_size = s.mesh_buf.material.size();
     if (material_size != last_material_size)
     {
-        printf("Recreating mesh material buffer, old size: %zu, new size: %zu\n", last_material_size, material_size);
+        fprintf(stdout, "Recreating mesh material buffer, old size: %zu, new size: %zu\n", last_material_size, material_size);
         if (buffers.mesh_material)
         {
             clReleaseMemObject(buffers.mesh_material);
@@ -448,7 +448,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                                material_size * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
         if (err != CL_SUCCESS)
         {
-            printf("Error recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
         last_material_size = material_size;
@@ -460,7 +460,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
                                    material_size * sizeof(float4), s.mesh_buf.material.data(), 0, NULL, &write_events[8]);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
         }
     }
 
@@ -506,7 +506,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
     err |= clSetKernelArg(reset_accumulation_kernel, 1, sizeof(cl_mem), &buffers.accumulation_buffer);
     if (err != CL_SUCCESS)
     {
-        printf("Error setting reset accumulation kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  setting reset accumulation kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
         return;
     }
 
@@ -514,7 +514,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
                                  NULL, global_work_size, local_work_size, 0, NULL, &reset_event);
     if (err != CL_SUCCESS)
     {
-        printf("Error executing reset accumulation kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  executing reset accumulation kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
         return;
     }
 
@@ -540,7 +540,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
 
     if (err != CL_SUCCESS)
     {
-        printf("Error setting path tracing kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  setting path tracing kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
         clReleaseEvent(reset_event);
         return;
     }
@@ -554,7 +554,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
 
     if (err != CL_SUCCESS)
     {
-        printf("Error executing first sample kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  executing first sample kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
         return;
     }
 
@@ -565,7 +565,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
         err = clSetKernelArg(path_trace_sample_kernel, 1, sizeof(uint), &sample);
         if (err != CL_SUCCESS)
         {
-            printf("Error updating sample index: %d (%s)\n", err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  updating sample index: %d (%s)\n", err, getCLErrorString(err).c_str());
             // Clean up previous events
             for (uint i = 0; i < sample; i++)
             {
@@ -580,7 +580,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
                                      1, &sample_events[sample - 1], &sample_events[sample]);
         if (err != CL_SUCCESS)
         {
-            printf("Error executing sample %d kernel: %d (%s)\n", sample, err, getCLErrorString(err).c_str());
+            fprintf(stderr, "Error  executing sample %d kernel: %d (%s)\n", sample, err, getCLErrorString(err).c_str());
             // Clean up previous events
             for (uint i = 0; i < sample; i++)
             {
@@ -601,7 +601,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
     err |= clSetKernelArg(tonemap_kernel, 1, sizeof(cl_mem), &buffers.output_image);
     if (err != CL_SUCCESS)
     {
-        printf("Error setting tonemap kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  setting tonemap kernel arguments: %d (%s)\n", err, getCLErrorString(err).c_str());
         // Clean up remaining events
         for (uint i = 0; i < total_samples; i++)
         {
@@ -627,7 +627,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
 
     if (err != CL_SUCCESS)
     {
-        printf("Error executing tonemap kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  executing tonemap kernel: %d (%s)\n", err, getCLErrorString(err).c_str());
         return;
     }
 
@@ -640,7 +640,7 @@ void opencl_render(const scene &s, uchar4 *image, const OpenCLContext &cl_contex
 
     if (err != CL_SUCCESS)
     {
-        printf("Error reading output image: %d (%s)\n", err, getCLErrorString(err).c_str());
+        fprintf(stderr, "Error  reading output image: %d (%s)\n", err, getCLErrorString(err).c_str());
         return;
     }
 
@@ -661,7 +661,7 @@ int main(int argc, char **argv)
 
     if (rank == 0)
     {
-        printf("Running with MPI: %d processes\n", world_size);
+        fprintf(stdout, "Running with MPI: %d processes\n", world_size);
     }
 #endif
 
@@ -684,7 +684,7 @@ int main(int argc, char **argv)
     end_frame = (rank == world_size - 1) ? frame_count : start_frame + frames_per_rank;
 
     // Each rank only reports its own range
-    printf("Rank %d processing frames %u to %u\n", rank, start_frame, end_frame - 1);
+    fprintf(stdout, "Rank %d processing frames %u to %u\n", rank, start_frame, end_frame - 1);
 #endif
 
     // create the first frame here for the buffers
@@ -708,7 +708,7 @@ int main(int argc, char **argv)
         if (vendor_str.find("NVIDIA") != std::string::npos)
         {
             filtered_contexts.push_back(context);
-            printf("Selected NVIDIA GPU: %s\n", vendor);
+            fprintf(stdout, "Selected NVIDIA GPU: %s\n", vendor);
         }
     }
     gpu_contexts = filtered_contexts;
@@ -717,7 +717,7 @@ int main(int argc, char **argv)
     // When on server, HIP will be used for AMD GPUs
     // HIP initialization code would go here if using HIP directly
     // For now, we keep all OpenCL contexts as they're already filtered by initializeOpenCLDevices()
-    printf("Running in server environment with all available GPUs\n");
+    fprintf(stdout, "Running in server environment with all available GPUs\n");
 #endif
 
 #ifdef USE_LUMI
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
 
     if (rank == 0)
     {
-        printf("Total GPUs across all ranks: %d\n", total_gpu_count);
+        fprintf(stdout, "Total GPUs across all ranks: %d\n", total_gpu_count);
     }
 #endif
 
@@ -753,11 +753,11 @@ int main(int argc, char **argv)
 
             char device_name[256];
             clGetDeviceInfo(gpu_contexts[i].deviceId, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
-            printf("Rank %d initialized GPU %zu: %s\n", rank, i, device_name);
+            fprintf(stdout, "Rank %d initialized GPU %zu: %s\n", rank, i, device_name);
         }
         catch (const std::exception &e)
         {
-            printf("Failed to initialize GPU %zu: %s\n", i, e.what());
+            fprintf(stdout, "Failed to initialize GPU %zu: %s\n", i, e.what());
         }
     }
 

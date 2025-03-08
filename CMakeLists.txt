@@ -13,15 +13,19 @@ if(USE_LUMI)
     include_directories(/opt/rocm/include)
     link_directories(/opt/rocm/lib)
     # ROCm OpenCL implementation workarounds
-    add_definitions(-Dinline=)
     add_definitions(-DUSE_LUMI)
 
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
     add_definitions(-DUSE_MPI)
     set(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_LIBRARIES})
+    
+    # Manually set OpenCL library for LUMI/ROCm
+    set(OpenCL_LIBRARIES OpenCL)
+else()
+    message(STATUS "Configuring for generic OpenCL")
+    find_package(OpenCL REQUIRED)
 endif()
-
 # Windows OpenMP
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
@@ -39,11 +43,6 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -march=native")
 endif()
-
-
-
-# OpenCL configuration with custom paths for LUMI/ROCm
-find_package(OpenCL REQUIRED)
 
 set(SOURCES
     main.cc

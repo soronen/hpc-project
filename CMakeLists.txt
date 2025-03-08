@@ -15,6 +15,11 @@ if(USE_LUMI)
     # ROCm OpenCL implementation workarounds
     add_definitions(-Dinline=)
     add_definitions(-DUSE_LUMI)
+
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
+    add_definitions(-DUSE_MPI)
+    set(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_LIBRARIES})
 endif()
 
 # Windows OpenMP
@@ -35,14 +40,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -march=native")
 endif()
 
-option(USE_MPI "Build with MPI support" OFF)
 
-if(USE_MPI)
-    find_package(MPI REQUIRED)
-    include_directories(${MPI_INCLUDE_PATH})
-    add_definitions(-DUSE_MPI)
-    set(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_LIBRARIES})
-endif()
 
 # OpenCL configuration with custom paths for LUMI/ROCm
 find_package(OpenCL REQUIRED)

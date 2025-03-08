@@ -10,13 +10,14 @@
 #include <iostream>
 #include <filesystem>
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
 #include <mpi.h>
 #endif
 
 // Renders the given scene into an image using path tracing.
 void baseline_render(const scene &s, uchar4 *image)
 {
+#pragma omp parallel for
     for (uint i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; ++i)
     {
         uint x = i % IMAGE_WIDTH;
@@ -24,7 +25,6 @@ void baseline_render(const scene &s, uchar4 *image)
 
         float3 color = {0, 0, 0};
 
-#pragma omp parallel for
         for (uint j = 0; j < SAMPLES_PER_PIXEL; ++j)
         {
             color += path_trace_pixel(
@@ -184,78 +184,297 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         cl_accumulation};
 }
 
-std::array<cl_event, 9> update_render_buffers(const scene &s, const OpenCLBuffers &buffers, const OpenCLContext &cl_context)
+std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buffers, const OpenCLContext &cl_context)
 {
+    // cpu parallelize the buffer updates
     cl_int err;
     std::array<cl_event, 9> write_events;
 
-    // Update all scene data buffers with new animation frame data
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.subframes, CL_FALSE, 0,
-                               s.subframes.size() * sizeof(subframe), s.subframes.data(), 0, NULL, &write_events[0]);
-    if (err != CL_SUCCESS)
+    // Track sizes of all buffers that might change
+    static size_t last_subframes_size = 0;
+    static size_t last_instances_size = 0;
+    static size_t last_nodes_size = 0;
+    static size_t last_links_size = 0;
+    static size_t last_indices_size = 0;
+    static size_t last_pos_size = 0;
+    static size_t last_normal_size = 0;
+    static size_t last_albedo_size = 0;
+    static size_t last_material_size = 0;
+
+    bool error_occured = false;
+
+    // Check and update subframes buffer
+    size_t subframes_size = s.subframes.size();
+    if (subframes_size != last_subframes_size)
     {
-        printf("Error updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating subframes buffer, old size: %zu, new size: %zu\n", last_subframes_size, subframes_size);
+        if (buffers.subframes)
+        {
+            clReleaseMemObject(buffers.subframes);
+        }
+        buffers.subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                           subframes_size * sizeof(subframe), (void *)s.subframes.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_subframes_size = subframes_size;
+        write_events[0] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.subframes, CL_FALSE, 0,
+                                   subframes_size * sizeof(subframe), s.subframes.data(), 0, NULL, &write_events[0]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.instances, CL_FALSE, 0,
-                               s.instances.size() * sizeof(tlas_instance), s.instances.data(), 0, NULL, &write_events[1]);
-    if (err != CL_SUCCESS)
+    // Check and update instances buffer
+    size_t instances_size = s.instances.size();
+    if (instances_size != last_instances_size)
     {
-        printf("Error updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating instances buffer, old size: %zu, new size: %zu\n", last_instances_size, instances_size);
+        if (buffers.instances)
+        {
+            clReleaseMemObject(buffers.instances);
+        }
+        buffers.instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                           instances_size * sizeof(tlas_instance), (void *)s.instances.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_instances_size = instances_size;
+        write_events[1] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.instances, CL_FALSE, 0,
+                                   instances_size * sizeof(tlas_instance), s.instances.data(), 0, NULL, &write_events[1]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    // Update BVH structures which might change if objects move
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_nodes, CL_FALSE, 0,
-                               s.bvh_buf.nodes.size() * sizeof(bvh_node), s.bvh_buf.nodes.data(), 0, NULL, &write_events[2]);
-    if (err != CL_SUCCESS)
+    // Handle BVH nodes (existing code)
+    size_t nodes_size = s.bvh_buf.nodes.size();
+    if (nodes_size != last_nodes_size)
     {
-        printf("Error updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating BVH nodes buffer, old size: %zu, new size: %zu\n", last_nodes_size, nodes_size);
+        if (buffers.bvh_nodes)
+        {
+            clReleaseMemObject(buffers.bvh_nodes);
+        }
+        buffers.bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                           nodes_size * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_nodes_size = nodes_size;
+        write_events[2] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_nodes, CL_FALSE, 0,
+                                   nodes_size * sizeof(bvh_node), s.bvh_buf.nodes.data(), 0, NULL, &write_events[2]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_links, CL_FALSE, 0,
-                               s.bvh_buf.links.size() * sizeof(bvh_link), s.bvh_buf.links.data(), 0, NULL, &write_events[3]);
-    if (err != CL_SUCCESS)
+    // Handle BVH links (existing code)
+    size_t links_size = s.bvh_buf.links.size();
+    if (links_size != last_links_size)
     {
-        printf("Error updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating BVH links buffer, old size: %zu, new size: %zu\n", last_links_size, links_size);
+        if (buffers.bvh_links)
+        {
+            clReleaseMemObject(buffers.bvh_links);
+        }
+        buffers.bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                           links_size * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_links_size = links_size;
+        write_events[3] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_links, CL_FALSE, 0,
+                                   links_size * sizeof(bvh_link), s.bvh_buf.links.data(), 0, NULL, &write_events[3]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    // Update mesh data which might change during animation
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_pos, CL_FALSE, 0,
-                               s.mesh_buf.pos.size() * sizeof(float3), s.mesh_buf.pos.data(), 0, NULL, &write_events[4]);
-    if (err != CL_SUCCESS)
+    // Check and update mesh positions buffer
+    size_t pos_size = s.mesh_buf.pos.size();
+    if (pos_size != last_pos_size)
     {
-        printf("Error updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating mesh positions buffer, old size: %zu, new size: %zu\n", last_pos_size, pos_size);
+        if (buffers.mesh_pos)
+        {
+            clReleaseMemObject(buffers.mesh_pos);
+        }
+        buffers.mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                          pos_size * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_pos_size = pos_size;
+        write_events[4] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_pos, CL_FALSE, 0,
+                                   pos_size * sizeof(float3), s.mesh_buf.pos.data(), 0, NULL, &write_events[4]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_normal, CL_FALSE, 0,
-                               s.mesh_buf.normal.size() * sizeof(float3), s.mesh_buf.normal.data(), 0, NULL, &write_events[5]);
-    if (err != CL_SUCCESS)
+    // Check and update mesh normals buffer
+    size_t normal_size = s.mesh_buf.normal.size();
+    if (normal_size != last_normal_size)
     {
-        printf("Error updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating mesh normals buffer, old size: %zu, new size: %zu\n", last_normal_size, normal_size);
+        if (buffers.mesh_normal)
+        {
+            clReleaseMemObject(buffers.mesh_normal);
+        }
+        buffers.mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                             normal_size * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_normal_size = normal_size;
+        write_events[5] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_normal, CL_FALSE, 0,
+                                   normal_size * sizeof(float3), s.mesh_buf.normal.data(), 0, NULL, &write_events[5]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    // These might not change between frames but update to be safe
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_indices, CL_FALSE, 0,
-                               s.mesh_buf.indices.size() * sizeof(uint), s.mesh_buf.indices.data(), 0, NULL, &write_events[6]);
-    if (err != CL_SUCCESS)
+    // Check and update mesh indices buffer
+    size_t indices_size = s.mesh_buf.indices.size();
+    if (indices_size != last_indices_size)
     {
-        printf("Error updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating mesh indices buffer, old size: %zu, new size: %zu\n", last_indices_size, indices_size);
+        if (buffers.mesh_indices)
+        {
+            clReleaseMemObject(buffers.mesh_indices);
+        }
+        buffers.mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                              indices_size * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_indices_size = indices_size;
+        write_events[6] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_indices, CL_FALSE, 0,
+                                   indices_size * sizeof(uint), s.mesh_buf.indices.data(), 0, NULL, &write_events[6]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_albedo, CL_FALSE, 0,
-                               s.mesh_buf.albedo.size() * sizeof(float4), s.mesh_buf.albedo.data(), 0, NULL, &write_events[7]);
-    if (err != CL_SUCCESS)
+    // Check and update mesh albedo buffer
+    size_t albedo_size = s.mesh_buf.albedo.size();
+    if (albedo_size != last_albedo_size)
     {
-        printf("Error updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating mesh albedo buffer, old size: %zu, new size: %zu\n", last_albedo_size, albedo_size);
+        if (buffers.mesh_albedo)
+        {
+            clReleaseMemObject(buffers.mesh_albedo);
+        }
+        buffers.mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                             albedo_size * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_albedo_size = albedo_size;
+        write_events[7] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_albedo, CL_FALSE, 0,
+                                   albedo_size * sizeof(float4), s.mesh_buf.albedo.data(), 0, NULL, &write_events[7]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
-    err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_material, CL_FALSE, 0,
-                               s.mesh_buf.material.size() * sizeof(float4), s.mesh_buf.material.data(), 0, NULL, &write_events[8]);
-    if (err != CL_SUCCESS)
+    // Check and update mesh material buffer
+    size_t material_size = s.mesh_buf.material.size();
+    if (material_size != last_material_size)
     {
-        printf("Error updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        printf("Recreating mesh material buffer, old size: %zu, new size: %zu\n", last_material_size, material_size);
+        if (buffers.mesh_material)
+        {
+            clReleaseMemObject(buffers.mesh_material);
+        }
+        buffers.mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                               material_size * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            error_occured = true;
+        }
+        last_material_size = material_size;
+        write_events[8] = NULL;
+    }
+    else
+    {
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_material, CL_FALSE, 0,
+                                   material_size * sizeof(float4), s.mesh_buf.material.data(), 0, NULL, &write_events[8]);
+        if (err != CL_SUCCESS)
+        {
+            printf("Error updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+        }
     }
 
+    if (error_occured)
+    {
+        for (uint i = 0; i < 9; i++)
+        {
+            clReleaseEvent(write_events[i]);
+        }
+
+        exit(EXIT_FAILURE);
+    }
+
+    // Wait for all buffer operations to complete
     clWaitForEvents(9, write_events.data());
 
     return write_events;
@@ -435,7 +654,7 @@ int main(int argc, char **argv)
     int rank = 0;
     int world_size = 1;
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -459,7 +678,7 @@ int main(int argc, char **argv)
     uint start_frame = 0;
     uint end_frame = frame_count;
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
     uint frames_per_rank = frame_count / world_size;
     start_frame = rank * frames_per_rank;
     end_frame = (rank == world_size - 1) ? frame_count : start_frame + frames_per_rank;
@@ -475,7 +694,7 @@ int main(int argc, char **argv)
     std::vector<OpenCLContext> gpu_contexts = initializeOpenCLDevices();
     bool use_opencl = !gpu_contexts.empty();
 
-#ifndef USE_SERVER_ENV
+#ifndef USE_LUMI
     // Filter for NVIDIA GPUs only when running locally
     std::vector<OpenCLContext> filtered_contexts;
     for (const auto &context : gpu_contexts)
@@ -501,7 +720,7 @@ int main(int argc, char **argv)
     printf("Running in server environment with all available GPUs\n");
 #endif
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
     // Collect total GPU count across all ranks
     int local_gpu_count = gpu_contexts.size();
     int total_gpu_count = 0;
@@ -584,7 +803,7 @@ int main(int argc, char **argv)
         while (index_str.size() < 4)
             index_str.insert(index_str.begin(), '0');
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
         // Each rank writes to its own output directory
         std::string output_dir = "output/rank_" + std::to_string(rank);
         std::filesystem::create_directories(output_dir);
@@ -629,7 +848,7 @@ int main(int argc, char **argv)
         }
     }
 
-#ifdef USE_MPI
+#ifdef USE_LUMI
     MPI_Finalize();
 #endif
 

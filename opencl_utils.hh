@@ -4,8 +4,12 @@
 #define CL_TARGET_OPENCL_VERSION 120
 #include <OpenCL/opencl.h>
 #else
+#ifdef USE_LUMI
+#define CL_TARGET_OPENCL_VERSION 220
+#else
 #define CL_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
+#endif
 #endif
 
 #ifdef __APPLE__

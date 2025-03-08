@@ -41,6 +41,7 @@ endif()
 
 # Common flags for Clang and GNU (GCC)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    message(STATUS "Found Clang or GNU compiler. Adding flags: -O3 -ffast-math -march=native")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -march=native")
 endif()
 

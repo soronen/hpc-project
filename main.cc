@@ -70,7 +70,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
     size_t image_size = IMAGE_WIDTH * IMAGE_HEIGHT;
 
     // Create buffer for the final image
-    cl_mem cl_output_image = clCreateBuffer(cl_context.context, CL_MEM_READ_WRITE,
+    cl_mem cl_output_image = clCreateBuffer(cl_context.context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
                                             image_size * sizeof(uchar4), NULL, &err);
     if (err != CL_SUCCESS)
     {
@@ -88,7 +88,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
     }
 
     // Create buffers for scene data
-    cl_mem cl_subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                          s.subframes.size() * sizeof(subframe), (void *)s.subframes.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -96,7 +96,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                          s.instances.size() * sizeof(tlas_instance), (void *)s.instances.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -104,7 +104,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                          s.bvh_buf.nodes.size() * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -112,7 +112,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                          s.bvh_buf.links.size() * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -120,7 +120,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                             s.mesh_buf.indices.size() * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -128,7 +128,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                         s.mesh_buf.pos.size() * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -136,7 +136,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            s.mesh_buf.normal.size() * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -144,7 +144,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            s.mesh_buf.albedo.size() * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -152,7 +152,7 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
         exit(EXIT_FAILURE);
     }
 
-    cl_mem cl_mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+    cl_mem cl_mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                              s.mesh_buf.material.size() * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
     if (err != CL_SUCCESS)
     {
@@ -223,7 +223,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.subframes);
         }
-        buffers.subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            subframes_size * sizeof(subframe), (void *)s.subframes.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -252,7 +252,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.instances);
         }
-        buffers.instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            instances_size * sizeof(tlas_instance), (void *)s.instances.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -281,7 +281,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.bvh_nodes);
         }
-        buffers.bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            nodes_size * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -310,7 +310,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.bvh_links);
         }
-        buffers.bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                            links_size * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -339,7 +339,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.mesh_pos);
         }
-        buffers.mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                           pos_size * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -368,7 +368,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.mesh_normal);
         }
-        buffers.mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                              normal_size * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -397,7 +397,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.mesh_indices);
         }
-        buffers.mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                               indices_size * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -426,7 +426,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.mesh_albedo);
         }
-        buffers.mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                              albedo_size * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
         if (err != CL_SUCCESS)
         {
@@ -455,7 +455,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         {
             clReleaseMemObject(buffers.mesh_material);
         }
-        buffers.mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY,
+        buffers.mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                                material_size * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
         if (err != CL_SUCCESS)
         {

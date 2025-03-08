@@ -728,6 +728,8 @@ int main(int argc, char **argv)
 
     for (uint frame_index = start_frame; frame_index < end_frame; ++frame_index)
     {
+        setup_animation_frame(s, frame_index);
+
         // Select which GPU to use for this frame (round-robin)
         int gpu_index = 0;
         if (gpu_contexts.size() > 0)

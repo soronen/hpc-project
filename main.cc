@@ -175,33 +175,33 @@ OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_cont
     };
 }
 
-std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buffers, const OpenCLContext &cl_context, int bufferId)
+std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buffers, const OpenCLContext &cl_context)
 {
     // cpu parallelize the buffer updates
     cl_int err;
     std::array<cl_event, 9> write_events;
 
     // Track sizes of all buffers that might change
-    static size_t last_subframes_size[2] = {0, 0};
-    static size_t last_instances_size[2] = {0, 0};
-    static size_t last_nodes_size[2] = {0, 0};
-    static size_t last_links_size[2] = {0, 0};
-    static size_t last_indices_size[2] = {0, 0};
-    static size_t last_pos_size[2] = {0, 0};
-    static size_t last_normal_size[2] = {0, 0};
-    static size_t last_albedo_size[2] = {0, 0};
-    static size_t last_material_size[2] = {0, 0};
+    static size_t last_subframes_size = 0;
+    static size_t last_instances_size = 0;
+    static size_t last_nodes_size = 0;
+    static size_t last_links_size = 0;
+    static size_t last_indices_size = 0;
+    static size_t last_pos_size = 0;
+    static size_t last_normal_size = 0;
+    static size_t last_albedo_size = 0;
+    static size_t last_material_size = 0;
 
     // Check if any buffer needs to be resized
-    bool needs_resize = (s.subframes.size() != last_subframes_size[bufferId] ||
-                         s.instances.size() != last_instances_size[bufferId] ||
-                         s.bvh_buf.nodes.size() != last_nodes_size[bufferId] ||
-                         s.bvh_buf.links.size() != last_links_size[bufferId] ||
-                         s.mesh_buf.indices.size() != last_indices_size[bufferId] ||
-                         s.mesh_buf.pos.size() != last_pos_size[bufferId] ||
-                         s.mesh_buf.normal.size() != last_normal_size[bufferId] ||
-                         s.mesh_buf.albedo.size() != last_albedo_size[bufferId] ||
-                         s.mesh_buf.material.size() != last_material_size[bufferId]);
+    bool needs_resize = (s.subframes.size() != last_subframes_size ||
+                         s.instances.size() != last_instances_size ||
+                         s.bvh_buf.nodes.size() != last_nodes_size ||
+                         s.bvh_buf.links.size() != last_links_size ||
+                         s.mesh_buf.indices.size() != last_indices_size ||
+                         s.mesh_buf.pos.size() != last_pos_size ||
+                         s.mesh_buf.normal.size() != last_normal_size ||
+                         s.mesh_buf.albedo.size() != last_albedo_size ||
+                         s.mesh_buf.material.size() != last_material_size);
 
     // Force synchronous behavior if resizing is needed
     cl_bool blocking_write = needs_resize ? CL_TRUE : CL_FALSE;
@@ -216,9 +216,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
 
     // update buffers or recreate them if needed
     size_t subframes_size = s.subframes.size();
-    if (subframes_size > last_subframes_size[bufferId])
+    if (subframes_size > last_subframes_size)
     {
-        fprintf(stdout, "Recreating subframes buffer, old size: %zu, new size: %zu\n", last_subframes_size[bufferId], subframes_size);
+        fprintf(stdout, "Recreating subframes buffer, old size: %zu, new size: %zu\n", last_subframes_size, subframes_size);
         if (buffers.subframes)
         {
             clReleaseMemObject(buffers.subframes);
@@ -230,7 +230,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_subframes_size[bufferId] = subframes_size;
+        last_subframes_size = subframes_size;
         write_events[0] = NULL;
     }
     else
@@ -245,9 +245,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t instances_size = s.instances.size();
-    if (instances_size > last_instances_size[bufferId])
+    if (instances_size > last_instances_size)
     {
-        fprintf(stdout, "Recreating instances buffer, old size: %zu, new size: %zu\n", last_instances_size[bufferId], instances_size);
+        fprintf(stdout, "Recreating instances buffer, old size: %zu, new size: %zu\n", last_instances_size, instances_size);
         if (buffers.instances)
         {
             clReleaseMemObject(buffers.instances);
@@ -259,7 +259,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_instances_size[bufferId] = instances_size;
+        last_instances_size = instances_size;
         write_events[1] = NULL;
     }
     else
@@ -274,9 +274,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t nodes_size = s.bvh_buf.nodes.size();
-    if (nodes_size > last_nodes_size[bufferId])
+    if (nodes_size > last_nodes_size)
     {
-        fprintf(stdout, "Recreating BVH nodes buffer, old size: %zu, new size: %zu\n", last_nodes_size[bufferId], nodes_size);
+        fprintf(stdout, "Recreating BVH nodes buffer, old size: %zu, new size: %zu\n", last_nodes_size, nodes_size);
         if (buffers.bvh_nodes)
         {
             clReleaseMemObject(buffers.bvh_nodes);
@@ -288,7 +288,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_nodes_size[bufferId] = nodes_size;
+        last_nodes_size = nodes_size;
         write_events[2] = NULL;
     }
     else
@@ -303,9 +303,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t links_size = s.bvh_buf.links.size();
-    if (links_size > last_links_size[bufferId])
+    if (links_size > last_links_size)
     {
-        fprintf(stdout, "Recreating BVH links buffer, old size: %zu, new size: %zu\n", last_links_size[bufferId], links_size);
+        fprintf(stdout, "Recreating BVH links buffer, old size: %zu, new size: %zu\n", last_links_size, links_size);
         if (buffers.bvh_links)
         {
             clReleaseMemObject(buffers.bvh_links);
@@ -317,7 +317,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_links_size[bufferId] = links_size;
+        last_links_size = links_size;
         write_events[3] = NULL;
     }
     else
@@ -332,9 +332,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t pos_size = s.mesh_buf.pos.size();
-    if (pos_size > last_pos_size[bufferId])
+    if (pos_size > last_pos_size)
     {
-        fprintf(stdout, "Recreating mesh positions buffer, old size: %zu, new size: %zu\n", last_pos_size[bufferId], pos_size);
+        fprintf(stdout, "Recreating mesh positions buffer, old size: %zu, new size: %zu\n", last_pos_size, pos_size);
         if (buffers.mesh_pos)
         {
             clReleaseMemObject(buffers.mesh_pos);
@@ -346,7 +346,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_pos_size[bufferId] = pos_size;
+        last_pos_size = pos_size;
         write_events[4] = NULL;
     }
     else
@@ -361,9 +361,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t normal_size = s.mesh_buf.normal.size();
-    if (normal_size > last_normal_size[bufferId])
+    if (normal_size > last_normal_size)
     {
-        fprintf(stdout, "Recreating mesh normals buffer, old size: %zu, new size: %zu\n", last_normal_size[bufferId], normal_size);
+        fprintf(stdout, "Recreating mesh normals buffer, old size: %zu, new size: %zu\n", last_normal_size, normal_size);
         if (buffers.mesh_normal)
         {
             clReleaseMemObject(buffers.mesh_normal);
@@ -375,7 +375,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_normal_size[bufferId] = normal_size;
+        last_normal_size = normal_size;
         write_events[5] = NULL;
     }
     else
@@ -390,9 +390,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t indices_size = s.mesh_buf.indices.size();
-    if (indices_size > last_indices_size[bufferId])
+    if (indices_size > last_indices_size)
     {
-        fprintf(stdout, "Recreating mesh indices buffer, old size: %zu, new size: %zu\n", last_indices_size[bufferId], indices_size);
+        fprintf(stdout, "Recreating mesh indices buffer, old size: %zu, new size: %zu\n", last_indices_size, indices_size);
         if (buffers.mesh_indices)
         {
             clReleaseMemObject(buffers.mesh_indices);
@@ -404,7 +404,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_indices_size[bufferId] = indices_size;
+        last_indices_size = indices_size;
         write_events[6] = NULL;
     }
     else
@@ -419,9 +419,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t albedo_size = s.mesh_buf.albedo.size();
-    if (albedo_size > last_albedo_size[bufferId])
+    if (albedo_size > last_albedo_size)
     {
-        fprintf(stdout, "Recreating mesh albedo buffer, old size: %zu, new size: %zu\n", last_albedo_size[bufferId], albedo_size);
+        fprintf(stdout, "Recreating mesh albedo buffer, old size: %zu, new size: %zu\n", last_albedo_size, albedo_size);
         if (buffers.mesh_albedo)
         {
             clReleaseMemObject(buffers.mesh_albedo);
@@ -433,7 +433,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_albedo_size[bufferId] = albedo_size;
+        last_albedo_size = albedo_size;
         write_events[7] = NULL;
     }
     else
@@ -448,9 +448,9 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     }
 
     size_t material_size = s.mesh_buf.material.size();
-    if (material_size > last_material_size[bufferId])
+    if (material_size > last_material_size)
     {
-        fprintf(stdout, "Recreating mesh material buffer, old size: %zu, new size: %zu\n", last_material_size[bufferId], material_size);
+        fprintf(stdout, "Recreating mesh material buffer, old size: %zu, new size: %zu\n", last_material_size, material_size);
         if (buffers.mesh_material)
         {
             clReleaseMemObject(buffers.mesh_material);
@@ -462,7 +462,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
             fprintf(stderr, "Error recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
             error_occured = true;
         }
-        last_material_size[bufferId] = material_size;
+        last_material_size = material_size;
         write_events[8] = NULL;
     }
     else
@@ -704,8 +704,7 @@ int main(int argc, char **argv)
     // Initialize kernels and buffers for each available GPU
     std::vector<cl_kernel> path_trace_kernels(gpu_contexts.size());
     std::vector<cl_kernel> tonemap_kernels(gpu_contexts.size());
-    std::vector<cl_kernel> path_trace_sample_kernels(gpu_contexts.size());
-    std::vector<std::array<OpenCLBuffers, 2>> gpu_buffers(gpu_contexts.size());
+    std::vector<OpenCLBuffers> gpu_buffers(gpu_contexts.size());
 
     for (size_t i = 0; i < gpu_contexts.size(); i++)
     {
@@ -713,10 +712,7 @@ int main(int argc, char **argv)
         {
             path_trace_kernels[i] = createKernel(gpu_contexts[i], "path_trace_pixel_kernel");
             tonemap_kernels[i] = createKernel(gpu_contexts[i], "tonemap_kernel");
-            path_trace_sample_kernels[i] = createKernel(gpu_contexts[i], "path_trace_sample_kernel");
-
-            gpu_buffers[i][0] = create_render_buffers(s, gpu_contexts[i]);
-            gpu_buffers[i][1] = create_render_buffers(s, gpu_contexts[i]);
+            gpu_buffers[i] = create_render_buffers(s, gpu_contexts[i]);
 
             char device_name[256];
             clGetDeviceInfo(gpu_contexts[i].deviceId, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
@@ -730,12 +726,6 @@ int main(int argc, char **argv)
 
     std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
 
-    // Process frames assigned to this rank
-    std::array<cl_event, 9> previous_events;
-    bool has_previous_events = false;
-    int current_buffer = 0;
-    int next_buffer = 1;
-
     for (uint frame_index = start_frame; frame_index < end_frame; ++frame_index)
     {
         // Select which GPU to use for this frame (round-robin)
@@ -747,61 +737,19 @@ int main(int argc, char **argv)
 
         if (use_opencl && gpu_index < gpu_contexts.size())
         {
-            // If we have previous events from preparing this frame in the last iteration,
-            // wait for them to complete now
-            if (has_previous_events)
-            {
-                // The current buffer was already being prepared in the previous iteration
-                clWaitForEvents(previous_events.size(), previous_events.data());
-                for (cl_event &event : previous_events)
-                {
-                    if (event != nullptr)
-                    {
-                        clReleaseEvent(event);
-                    }
-                }
-            }
-            else
-            {
-                // First frame or previous frame didn't prepare this one
-                // Prepare current frame
-                setup_animation_frame(s, frame_index);
 
-                // Update buffers for current frame synchronously
-                std::array<cl_event, 9> current_events = update_render_buffers(
-                    s, gpu_buffers[gpu_index][current_buffer], gpu_contexts[gpu_index], current_buffer);
+            // Update buffers for the current frame
+            auto write_events = update_render_buffers(s, gpu_buffers[gpu_index], gpu_contexts[gpu_index]);
 
-                clWaitForEvents(current_events.size(), current_events.data());
-                for (cl_event &event : current_events)
-                {
-                    if (event != nullptr)
-                    {
-                        clReleaseEvent(event);
-                    }
-                }
-            }
+            // Wait for all write events to complete
+            clWaitForEvents(write_events.size(), write_events.data());
 
             // Render the current frame
             opencl_render(image.get(),
                           gpu_contexts[gpu_index],
-                          gpu_buffers[gpu_index][current_buffer],
+                          gpu_buffers[gpu_index],
                           path_trace_kernels[gpu_index],
                           tonemap_kernels[gpu_index]);
-
-            // Asynchronously prepare next frame if not the last frame
-            has_previous_events = false;
-            if (frame_index + 1 < end_frame)
-            {
-                // Make a copy of the scene to prevent data races
-                scene next_scene = s;
-                setup_animation_frame(next_scene, frame_index + 1);
-
-                // Update next frame's buffers asynchronously
-                // This will happen in parallel with writing the current frame to disk
-                previous_events = update_render_buffers(next_scene, gpu_buffers[gpu_index][next_buffer], gpu_contexts[gpu_index], next_buffer);
-                has_previous_events = true;
-            }
-            std::swap(current_buffer, next_buffer);
         }
         else
         {
@@ -832,24 +780,21 @@ int main(int argc, char **argv)
     {
         for (size_t g = 0; g < gpu_contexts.size(); g++)
         {
-            for (int i = 0; i < 2; i++)
-            {
-                clReleaseMemObject(gpu_buffers[g][i].output_image);
-                clReleaseMemObject(gpu_buffers[g][i].colors);
-                clReleaseMemObject(gpu_buffers[g][i].subframes);
-                clReleaseMemObject(gpu_buffers[g][i].instances);
-                clReleaseMemObject(gpu_buffers[g][i].bvh_nodes);
-                clReleaseMemObject(gpu_buffers[g][i].bvh_links);
-                clReleaseMemObject(gpu_buffers[g][i].mesh_indices);
-                clReleaseMemObject(gpu_buffers[g][i].mesh_pos);
-                clReleaseMemObject(gpu_buffers[g][i].mesh_normal);
-                clReleaseMemObject(gpu_buffers[g][i].mesh_albedo);
-                clReleaseMemObject(gpu_buffers[g][i].mesh_material);
-            }
+
+            clReleaseMemObject(gpu_buffers[g].output_image);
+            clReleaseMemObject(gpu_buffers[g].colors);
+            clReleaseMemObject(gpu_buffers[g].subframes);
+            clReleaseMemObject(gpu_buffers[g].instances);
+            clReleaseMemObject(gpu_buffers[g].bvh_nodes);
+            clReleaseMemObject(gpu_buffers[g].bvh_links);
+            clReleaseMemObject(gpu_buffers[g].mesh_indices);
+            clReleaseMemObject(gpu_buffers[g].mesh_pos);
+            clReleaseMemObject(gpu_buffers[g].mesh_normal);
+            clReleaseMemObject(gpu_buffers[g].mesh_albedo);
+            clReleaseMemObject(gpu_buffers[g].mesh_material);
 
             clReleaseKernel(path_trace_kernels[g]);
             clReleaseKernel(tonemap_kernels[g]);
-            clReleaseKernel(path_trace_sample_kernels[g]);
 
             clReleaseProgram(gpu_contexts[g].program);
             clReleaseCommandQueue(gpu_contexts[g].commandQueue);

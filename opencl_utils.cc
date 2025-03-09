@@ -280,7 +280,7 @@ std::vector<OpenCLContext> initializeOpenCLDevices()
     return contexts;
 }
 
-void cleanup_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context, const int exit_code)
+void release_resources_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context, const int exit_code)
 {
     if (buffers.output_image)
         clReleaseMemObject(buffers.output_image);
@@ -311,5 +311,9 @@ void cleanup_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context,
     if (context.program)
         clReleaseProgram(context.program);
     fprintf(stderr, "OpenCL resources released, exiting with code %d\n", exit_code);
+#ifdef USE_LUMI
+    fprintf(stderr, "Finalizing MPI\n");
+    MPI_Finalize();
+#endif
     exit(exit_code);
 }

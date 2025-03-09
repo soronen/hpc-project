@@ -592,6 +592,7 @@ int main(int argc, char **argv)
                     cleanup_resources(gpu_buffers[g], gpu_contexts[g]);
                 }
 #ifdef USE_LUMI
+                fprintf(stderr, "[Rank %d] MPI finalization complete. Program encountered an error.\n", rank);
                 MPI_Finalize();
 #endif
                 return 1;
@@ -631,7 +632,7 @@ int main(int argc, char **argv)
     }
 
 #ifdef USE_LUMI
-    fprintf(stderr, "Finalizing MPI\n");
+    fprintf(stderr, "[Rank %d] MPI finalization complete. Program ended succesfully.\n", rank);
     MPI_Finalize();
 #endif
     return 0;

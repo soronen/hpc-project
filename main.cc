@@ -47,141 +47,36 @@ void baseline_render(const scene &s, uchar4 *image)
     }
 }
 
-struct OpenCLBuffers
+OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const OpenCLContext &cl_context)
 {
-    cl_mem output_image;
-    cl_mem colors;
-    cl_mem subframes;
-    cl_mem instances;
-    cl_mem bvh_nodes;
-    cl_mem bvh_links;
-    cl_mem mesh_indices;
-    cl_mem mesh_pos;
-    cl_mem mesh_normal;
-    cl_mem mesh_albedo;
-    cl_mem mesh_material;
-};
 
-OpenCLBuffers create_render_buffers(const scene &s, const OpenCLContext &cl_context)
-{
     cl_int err;
 
-    // Create buffers for OpenCL
-    size_t image_size = IMAGE_WIDTH * IMAGE_HEIGHT;
-
-    // Create buffer for the final image
-    cl_mem cl_output_image = clCreateBuffer(cl_context.context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
-                                            image_size * sizeof(uchar4), NULL, &err);
-    if (err != CL_SUCCESS)
+    // Create buffer for the final image (needs only doing once)
+    if (!buffers.output_image)
     {
-        fprintf(stderr, "Error creating output image buffer: %d\n", err);
-        exit(EXIT_FAILURE);
+        buffers.output_image = clCreateBuffer(cl_context.context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                                              (IMAGE_WIDTH * IMAGE_HEIGHT) * sizeof(uchar4), NULL, &err);
+        if (err != CL_SUCCESS)
+        {
+            fprintf(stderr, "Error creating output image buffer: %d\n", err);
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
+        }
     }
 
-    // Create buffer for intermediate HDR colors
-    cl_mem cl_colors = clCreateBuffer(cl_context.context, CL_MEM_READ_WRITE,
-                                      image_size * sizeof(float3), NULL, &err);
-    if (err != CL_SUCCESS)
+    // Create buffer for intermediate buffer for tonemaps (needs only doing once)
+    if (!buffers.colors)
     {
-        fprintf(stderr, "Error creating colors buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
+        buffers.colors = clCreateBuffer(cl_context.context, CL_MEM_READ_WRITE,
+                                        (IMAGE_WIDTH * IMAGE_HEIGHT) * sizeof(float3), NULL, &err);
+        if (err != CL_SUCCESS)
+        {
+            fprintf(stderr, "Error creating colors buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
+        }
     }
 
-    // Create buffers for scene data
-    cl_mem cl_subframes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                         s.subframes.size() * sizeof(subframe), (void *)s.subframes.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_instances = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                         s.instances.size() * sizeof(tlas_instance), (void *)s.instances.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_bvh_nodes = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                         s.bvh_buf.nodes.size() * sizeof(bvh_node), (void *)s.bvh_buf.nodes.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_bvh_links = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                         s.bvh_buf.links.size() * sizeof(bvh_link), (void *)s.bvh_buf.links.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_mesh_indices = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                            s.mesh_buf.indices.size() * sizeof(uint), (void *)s.mesh_buf.indices.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_mesh_pos = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                        s.mesh_buf.pos.size() * sizeof(float3), (void *)s.mesh_buf.pos.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_mesh_normal = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                           s.mesh_buf.normal.size() * sizeof(float3), (void *)s.mesh_buf.normal.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_mesh_albedo = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                           s.mesh_buf.albedo.size() * sizeof(float4), (void *)s.mesh_buf.albedo.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    cl_mem cl_mesh_material = clCreateBuffer(cl_context.context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                             s.mesh_buf.material.size() * sizeof(float4), (void *)s.mesh_buf.material.data(), &err);
-    if (err != CL_SUCCESS)
-    {
-        fprintf(stderr, "Error creating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-        exit(EXIT_FAILURE);
-    }
-
-    return OpenCLBuffers{
-        cl_output_image,
-        cl_colors,
-        cl_subframes,
-        cl_instances,
-        cl_bvh_nodes,
-        cl_bvh_links,
-        cl_mesh_indices,
-        cl_mesh_pos,
-        cl_mesh_normal,
-        cl_mesh_albedo,
-        cl_mesh_material,
-    };
-}
-
-std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buffers, const OpenCLContext &cl_context)
-{
-    // cpu parallelize the buffer updates
-    cl_int err;
-    std::array<cl_event, 9> write_events;
-
-    // Track sizes of all buffers that might change
+    // Track sizes of all buffers that might change (so they can be recreated if too small and reused if big enough)
     static size_t last_subframes_size = 0;
     static size_t last_instances_size = 0;
     static size_t last_nodes_size = 0;
@@ -192,27 +87,7 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
     static size_t last_albedo_size = 0;
     static size_t last_material_size = 0;
 
-    // Check if any buffer needs to be resized
-    bool needs_resize = (s.subframes.size() != last_subframes_size ||
-                         s.instances.size() != last_instances_size ||
-                         s.bvh_buf.nodes.size() != last_nodes_size ||
-                         s.bvh_buf.links.size() != last_links_size ||
-                         s.mesh_buf.indices.size() != last_indices_size ||
-                         s.mesh_buf.pos.size() != last_pos_size ||
-                         s.mesh_buf.normal.size() != last_normal_size ||
-                         s.mesh_buf.albedo.size() != last_albedo_size ||
-                         s.mesh_buf.material.size() != last_material_size);
-
-    // Force synchronous behavior if resizing is needed
-    cl_bool blocking_write = needs_resize ? CL_TRUE : CL_FALSE;
-
-    bool error_occured = false;
-
-    // If we're resizing, wait for any pending operations to finish
-    if (needs_resize)
-    {
-        clFinish(cl_context.commandQueue);
-    }
+    std::array<cl_event, 9> write_events;
 
     // update buffers or recreate them if needed
     size_t subframes_size = s.subframes.size();
@@ -228,19 +103,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_subframes_size = subframes_size;
         write_events[0] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.subframes, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.subframes, CL_FALSE, 0,
                                    subframes_size * sizeof(subframe), s.subframes.data(), 0, NULL, &write_events[0]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -257,19 +132,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_instances_size = instances_size;
         write_events[1] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.instances, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.instances, CL_FALSE, 0,
                                    instances_size * sizeof(tlas_instance), s.instances.data(), 0, NULL, &write_events[1]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -286,19 +161,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_nodes_size = nodes_size;
         write_events[2] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_nodes, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_nodes, CL_FALSE, 0,
                                    nodes_size * sizeof(bvh_node), s.bvh_buf.nodes.data(), 0, NULL, &write_events[2]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -315,19 +190,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_links_size = links_size;
         write_events[3] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_links, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.bvh_links, CL_FALSE, 0,
                                    links_size * sizeof(bvh_link), s.bvh_buf.links.data(), 0, NULL, &write_events[3]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -344,19 +219,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_pos_size = pos_size;
         write_events[4] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_pos, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_pos, CL_FALSE, 0,
                                    pos_size * sizeof(float3), s.mesh_buf.pos.data(), 0, NULL, &write_events[4]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -373,19 +248,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_normal_size = normal_size;
         write_events[5] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_normal, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_normal, CL_FALSE, 0,
                                    normal_size * sizeof(float3), s.mesh_buf.normal.data(), 0, NULL, &write_events[5]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -402,19 +277,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_indices_size = indices_size;
         write_events[6] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_indices, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_indices, CL_FALSE, 0,
                                    indices_size * sizeof(uint), s.mesh_buf.indices.data(), 0, NULL, &write_events[6]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -431,19 +306,19 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_albedo_size = albedo_size;
         write_events[7] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_albedo, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_albedo, CL_FALSE, 0,
                                    albedo_size * sizeof(float4), s.mesh_buf.albedo.data(), 0, NULL, &write_events[7]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
@@ -460,56 +335,51 @@ std::array<cl_event, 9> update_render_buffers(const scene &s, OpenCLBuffers &buf
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
         last_material_size = material_size;
         write_events[8] = NULL;
     }
     else
     {
-        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_material, blocking_write, 0,
+        err = clEnqueueWriteBuffer(cl_context.commandQueue, buffers.mesh_material, CL_FALSE, 0,
                                    material_size * sizeof(float4), s.mesh_buf.material.data(), 0, NULL, &write_events[8]);
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            error_occured = true;
+            cleanup_and_exit(buffers, cl_context, EXIT_FAILURE);
         }
     }
 
-    if (error_occured)
-    {
-        for (uint i = 0; i < 9; i++)
-        {
-            if (write_events[i] != NULL)
-            {
-                clReleaseEvent(write_events[i]);
-            }
-        }
-        exit(EXIT_FAILURE);
-    }
+    clWaitForEvents(write_events.size(), write_events.data());
 
-    // Ensure that resize operations complete before returning
-    if (needs_resize)
-    {
-        clFinish(cl_context.commandQueue);
-    }
-
-    return write_events;
+    return {
+        buffers.output_image,
+        buffers.colors,
+        buffers.subframes,
+        buffers.instances,
+        buffers.bvh_nodes,
+        buffers.bvh_links,
+        buffers.mesh_indices,
+        buffers.mesh_pos,
+        buffers.mesh_normal,
+        buffers.mesh_albedo,
+        buffers.mesh_material,
+    };
 }
 
-void opencl_render(
-    uchar4 *image,
-    const OpenCLContext &cl_context,
-    OpenCLBuffers &buffers,
-    cl_kernel path_trace_kernel,
-    cl_kernel tonemap_kernel)
+void opencl_render(uchar4 *image,
+                   const OpenCLContext &cl_context,
+                   OpenCLBuffers &buffers,
+                   cl_kernel path_trace_kernel,
+                   cl_kernel tonemap_kernel)
 {
     cl_int err;
 
 #ifdef USE_LUMI
     static const size_t local_work_size[2] = {8, 8}; // LUMI's AMD wavefronts are 64 threads
 #else
-    static const size_t local_work_size[2] = {8, 4}; // NVIDIA warp is 32 threads
+    static const size_t local_work_size[2] = {8, 4}; // my NVIDIA GPUS's warp is 32 threads
 #endif
 
     // Round up the global work size to a multiple of local_work_size
@@ -591,7 +461,7 @@ void opencl_render(
     }
 
     // Read the final image (uchar4) from buffers.output_image back to host memory
-    size_t image_size = static_cast<size_t>(IMAGE_WIDTH) * IMAGE_HEIGHT;
+    size_t image_size = IMAGE_WIDTH * IMAGE_HEIGHT;
     cl_event readback_event;
     err = clEnqueueReadBuffer(
         cl_context.commandQueue,
@@ -619,22 +489,8 @@ void opencl_render(
 
 int main(int argc, char **argv)
 {
-    // MPI initialization
-    int rank = 0;
-    int world_size = 1;
 
-#ifdef USE_LUMI
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-    if (rank == 0)
-    {
-        fprintf(stdout, "Running with MPI: %d processes\n", world_size);
-    }
-#endif
-
-    // since I have my executable in /build folder
+    // since I have my executable in /build folder and /output folder is one level up
     std::filesystem::current_path(std::filesystem::path(__FILE__).parent_path());
 
     // Make sure all text parsing is unaffected by locale
@@ -647,49 +503,31 @@ int main(int argc, char **argv)
     uint start_frame = 0;
     uint end_frame = frame_count;
 
+    // Initialize available OpenCL devices
+    std::vector<OpenCLContext> gpu_contexts = initializeOpenCLDevices();
+    bool use_opencl = !gpu_contexts.empty();
+
 #ifdef USE_LUMI
+    // MPI initialization
+    int rank = 0;
+    int world_size = 1;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    if (rank == 0)
+    {
+        fprintf(stdout, "Running with MPI: %d processes\n", world_size);
+    }
+
     uint frames_per_rank = frame_count / world_size;
     start_frame = rank * frames_per_rank;
     end_frame = (rank == world_size - 1) ? frame_count : start_frame + frames_per_rank;
 
     // Each rank only reports its own range
     fprintf(stdout, "Rank %d processing frames %u to %u\n", rank, start_frame, end_frame - 1);
-#endif
 
-    // create the first frame here for the buffers
-    setup_animation_frame(s, start_frame);
-
-    // Initialize available OpenCL devices
-    std::vector<OpenCLContext> gpu_contexts = initializeOpenCLDevices();
-    bool use_opencl = !gpu_contexts.empty();
-
-#ifndef USE_LUMI
-    // Filter for NVIDIA GPUs only when running locally
-    std::vector<OpenCLContext> filtered_contexts;
-    for (const auto &context : gpu_contexts)
-    {
-        cl_device_type device_type;
-        char vendor[256];
-        clGetDeviceInfo(context.deviceId, CL_DEVICE_TYPE, sizeof(device_type), &device_type, NULL);
-        clGetDeviceInfo(context.deviceId, CL_DEVICE_VENDOR, sizeof(vendor), vendor, NULL);
-
-        std::string vendor_str(vendor);
-        if (vendor_str.find("NVIDIA") != std::string::npos)
-        {
-            filtered_contexts.push_back(context);
-            fprintf(stdout, "Selected NVIDIA GPU: %s\n", vendor);
-        }
-    }
-    gpu_contexts = filtered_contexts;
-    use_opencl = !gpu_contexts.empty();
-#else
-    // When on server, HIP will be used for AMD GPUs
-    // HIP initialization code would go here if using HIP directly
-    // For now, we keep all OpenCL contexts as they're already filtered by initializeOpenCLDevices()
-    fprintf(stdout, "Running in server environment with all available GPUs\n");
-#endif
-
-#ifdef USE_LUMI
     // Collect total GPU count across all ranks
     int local_gpu_count = gpu_contexts.size();
     int total_gpu_count = 0;
@@ -699,6 +537,20 @@ int main(int argc, char **argv)
     {
         fprintf(stdout, "Total GPUs across all ranks: %d\n", total_gpu_count);
     }
+#else
+    if (use_opencl)
+    {
+        // print all gpu devices
+        fprintf(stdout, "Found following GPU devices: ");
+        for (size_t i = 0; i < gpu_contexts.size(); i++)
+        {
+            char device_name[256];
+            clGetDeviceInfo(gpu_contexts[i].deviceId, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
+            fprintf(stdout, "GPU %zu: %s\n", i, device_name);
+        }
+        fprintf(stdout, "But using only device 0\n"); // NVIDIA
+        gpu_contexts.erase(gpu_contexts.begin() + 1, gpu_contexts.end());
+    };
 #endif
 
     // Initialize kernels and buffers for each available GPU
@@ -712,11 +564,12 @@ int main(int argc, char **argv)
         {
             path_trace_kernels[i] = createKernel(gpu_contexts[i], "path_trace_pixel_kernel");
             tonemap_kernels[i] = createKernel(gpu_contexts[i], "tonemap_kernel");
-            gpu_buffers[i] = create_render_buffers(s, gpu_contexts[i]);
+            // buffers are created on first update
+            // gpu_buffers[i] = create_render_buffers(s, gpu_contexts[i]);
 
             char device_name[256];
             clGetDeviceInfo(gpu_contexts[i].deviceId, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
-            fprintf(stdout, "Rank %d initialized GPU %zu: %s\n", rank, i, device_name);
+            fprintf(stdout, "Context %zu initialized GPU %s\n", i, device_name);
         }
         catch (const std::exception &e)
         {
@@ -741,10 +594,7 @@ int main(int argc, char **argv)
         {
 
             // Update buffers for the current frame
-            auto write_events = update_render_buffers(s, gpu_buffers[gpu_index], gpu_contexts[gpu_index]);
-
-            // Wait for all write events to complete
-            clWaitForEvents(write_events.size(), write_events.data());
+            gpu_buffers[gpu_index] = update_render_buffers(s, gpu_buffers[gpu_index], gpu_contexts[gpu_index]);
 
             // Render the current frame
             opencl_render(image.get(),
@@ -775,25 +625,7 @@ int main(int argc, char **argv)
     {
         for (size_t g = 0; g < gpu_contexts.size(); g++)
         {
-
-            clReleaseMemObject(gpu_buffers[g].output_image);
-            clReleaseMemObject(gpu_buffers[g].colors);
-            clReleaseMemObject(gpu_buffers[g].subframes);
-            clReleaseMemObject(gpu_buffers[g].instances);
-            clReleaseMemObject(gpu_buffers[g].bvh_nodes);
-            clReleaseMemObject(gpu_buffers[g].bvh_links);
-            clReleaseMemObject(gpu_buffers[g].mesh_indices);
-            clReleaseMemObject(gpu_buffers[g].mesh_pos);
-            clReleaseMemObject(gpu_buffers[g].mesh_normal);
-            clReleaseMemObject(gpu_buffers[g].mesh_albedo);
-            clReleaseMemObject(gpu_buffers[g].mesh_material);
-
-            clReleaseKernel(path_trace_kernels[g]);
-            clReleaseKernel(tonemap_kernels[g]);
-
-            clReleaseProgram(gpu_contexts[g].program);
-            clReleaseCommandQueue(gpu_contexts[g].commandQueue);
-            clReleaseContext(gpu_contexts[g].context);
+            cleanup_and_exit(gpu_buffers[g], gpu_contexts[g], EXIT_SUCCESS);
         }
     }
 

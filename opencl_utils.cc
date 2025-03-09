@@ -114,94 +114,26 @@ std::string readFile(const std::string &filePath)
     return oss.str();
 }
 
-OpenCLContext createOpenCLContext(int platformIndex, int deviceIndex, cl_device_type deviceType)
-{
-    OpenCLContext clCtx;
-    cl_int status = 0;
-
-    // 1) Get all platforms
-    cl_uint numPlatforms = 0;
-    status = clGetPlatformIDs(0, nullptr, &numPlatforms);
-    if (status != CL_SUCCESS || numPlatforms == 0)
-    {
-        throw std::runtime_error("Failed to get OpenCL platforms: " + getCLErrorString(status));
-    }
-    std::vector<cl_platform_id> platforms(numPlatforms);
-    status = clGetPlatformIDs(numPlatforms, platforms.data(), nullptr);
-    if (status != CL_SUCCESS)
-    {
-        throw std::runtime_error("Failed to get platform IDs: " + getCLErrorString(status));
-    }
-
-    // Ensure requested platformIndex is valid
-    if (platformIndex < 0 || static_cast<cl_uint>(platformIndex) >= numPlatforms)
-    {
-        throw std::runtime_error("Invalid platformIndex requested.");
-    }
-    cl_platform_id chosenPlatform = platforms[platformIndex];
-
-    // 2) Get devices of the chosen type on that platform
-    cl_uint numDevices = 0;
-    status = clGetDeviceIDs(chosenPlatform, deviceType, 0, nullptr, &numDevices);
-    if (status != CL_SUCCESS || numDevices == 0)
-    {
-        throw std::runtime_error("Failed to get devices: " + getCLErrorString(status));
-    }
-    std::vector<cl_device_id> devices(numDevices);
-    status = clGetDeviceIDs(chosenPlatform, deviceType, numDevices, devices.data(), nullptr);
-    if (status != CL_SUCCESS)
-    {
-        throw std::runtime_error("Failed to get device IDs: " + getCLErrorString(status));
-    }
-
-    // Ensure requested deviceIndex is valid
-    if (deviceIndex < 0 || static_cast<cl_uint>(deviceIndex) >= numDevices)
-    {
-        throw std::runtime_error("Invalid deviceIndex requested.");
-    }
-
-    clCtx.deviceId = devices[deviceIndex];
-
-    // 3) Create an OpenCL 1.2 context
-    clCtx.context = clCreateContext(nullptr, 1, &clCtx.deviceId, nullptr, nullptr, &status);
-    if (status != CL_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create OpenCL context: " + getCLErrorString(status));
-    }
-
-    // 4) Create a command queue (OpenCL 1.2 style)
-    clCtx.commandQueue = clCreateCommandQueue(clCtx.context, clCtx.deviceId, 0, &status);
-    if (status != CL_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create command queue: " + getCLErrorString(status));
-    }
-
-    return clCtx;
-}
-
-void buildOpenCLProgram(OpenCLContext &clCtx, const std::string &source, const char *buildOptions)
+void buildOpenCLProgram(OpenCLContext &context, const std::string &source, const char *buildOptions)
 {
     cl_int status = 0;
     const char *sourceStr = source.c_str();
     size_t sourceSize = source.size();
 
-    // Create program from source
-    clCtx.program = clCreateProgramWithSource(clCtx.context, 1, &sourceStr, &sourceSize, &status);
+    context.program = clCreateProgramWithSource(context.context, 1, &sourceStr, &sourceSize, &status);
     if (status != CL_SUCCESS)
     {
         throw std::runtime_error("Failed to create program from source: " + getCLErrorString(status));
     }
 
-    // Build (compile) the program
-    status = clBuildProgram(clCtx.program, 1, &clCtx.deviceId, buildOptions, nullptr, nullptr);
+    status = clBuildProgram(context.program, 1, &context.deviceId, buildOptions, nullptr, nullptr);
     if (status != CL_SUCCESS)
     {
-        // Retrieve build log for diagnosis
         size_t logSize = 0;
-        clGetProgramBuildInfo(clCtx.program, clCtx.deviceId, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+        clGetProgramBuildInfo(context.program, context.deviceId, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
 
         std::vector<char> buildLog(logSize);
-        clGetProgramBuildInfo(clCtx.program, clCtx.deviceId, CL_PROGRAM_BUILD_LOG, logSize, buildLog.data(), nullptr);
+        clGetProgramBuildInfo(context.program, context.deviceId, CL_PROGRAM_BUILD_LOG, logSize, buildLog.data(), nullptr);
 
         std::string logString(buildLog.begin(), buildLog.end());
         std::ostringstream oss;
@@ -212,10 +144,10 @@ void buildOpenCLProgram(OpenCLContext &clCtx, const std::string &source, const c
     }
 }
 
-cl_kernel createKernel(const OpenCLContext &clCtx, const std::string &kernelName)
+cl_kernel createKernel(const OpenCLContext &context, const std::string &kernelName)
 {
     cl_int status = 0;
-    cl_kernel kernel = clCreateKernel(clCtx.program, kernelName.c_str(), &status);
+    cl_kernel kernel = clCreateKernel(context.program, kernelName.c_str(), &status);
     if (status != CL_SUCCESS)
     {
         throw std::runtime_error("Failed to create kernel " + kernelName +
@@ -224,7 +156,6 @@ cl_kernel createKernel(const OpenCLContext &clCtx, const std::string &kernelName
     return kernel;
 }
 
-// Optional Info
 void printPlatformInfo()
 {
     cl_uint numPlatforms = 0;
@@ -252,17 +183,6 @@ void printPlatformInfo()
 
         std::cout << "Platform " << i << " Name: " << infoStr.data() << std::endl;
     }
-}
-
-void printDeviceInfo(cl_platform_id platform, cl_device_id device)
-{
-    // Example for device name
-    size_t infoLen = 0;
-    clGetDeviceInfo(device, CL_DEVICE_NAME, 0, nullptr, &infoLen);
-    std::vector<char> infoStr(infoLen);
-    clGetDeviceInfo(device, CL_DEVICE_NAME, infoLen, infoStr.data(), nullptr);
-
-    std::cout << "Device: " << infoStr.data() << " on platform " << platform << std::endl;
 }
 
 cl_program buildProgramForDevice(cl_context context, const std::string &source, cl_device_id device)
@@ -332,7 +252,7 @@ std::vector<OpenCLContext> initializeOpenCLDevices()
             if (err != CL_SUCCESS)
                 continue;
 
-            cl_command_queue queue = clCreateCommandQueue(context, devices[d], 0, &err);
+            cl_command_queue queue = clCreateCommandQueueWithProperties(context, devices[d], nullptr, &err);
             if (err != CL_SUCCESS)
             {
                 clReleaseContext(context);
@@ -360,3 +280,36 @@ std::vector<OpenCLContext> initializeOpenCLDevices()
     return contexts;
 }
 
+void cleanup_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context, const int exit_code)
+{
+    if (buffers.output_image)
+        clReleaseMemObject(buffers.output_image);
+    if (buffers.colors)
+        clReleaseMemObject(buffers.colors);
+    if (buffers.subframes)
+        clReleaseMemObject(buffers.subframes);
+    if (buffers.instances)
+        clReleaseMemObject(buffers.instances);
+    if (buffers.bvh_nodes)
+        clReleaseMemObject(buffers.bvh_nodes);
+    if (buffers.bvh_links)
+        clReleaseMemObject(buffers.bvh_links);
+    if (buffers.mesh_indices)
+        clReleaseMemObject(buffers.mesh_indices);
+    if (buffers.mesh_pos)
+        clReleaseMemObject(buffers.mesh_pos);
+    if (buffers.mesh_normal)
+        clReleaseMemObject(buffers.mesh_normal);
+    if (buffers.mesh_albedo)
+        clReleaseMemObject(buffers.mesh_albedo);
+    if (buffers.mesh_material)
+        clReleaseMemObject(buffers.mesh_material);
+    if (context.commandQueue)
+        clReleaseCommandQueue(context.commandQueue);
+    if (context.context)
+        clReleaseContext(context.context);
+    if (context.program)
+        clReleaseProgram(context.program);
+    fprintf(stderr, "OpenCL resources released, exiting with code %d\n", exit_code);
+    exit(exit_code);
+}

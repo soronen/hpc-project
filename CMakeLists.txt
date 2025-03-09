@@ -3,16 +3,12 @@ project(hpc-baseline LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Define option to enable LUMI/ROCm specific settings
-option(USE_LUMI "Build with LUMI/ROCm support" ON)
+option(USE_LUMI "Build with LUMI/ROCm support" OFF)
 
-
-# LUMI/ROCm specific settings
 if(USE_LUMI)
     message(STATUS "Configuring for LUMI with ROCm")
     include_directories(/opt/rocm/include)
     link_directories(/opt/rocm/lib)
-    # ROCm OpenCL implementation workarounds
     add_definitions(-DUSE_LUMI)
 
     find_package(MPI REQUIRED)
@@ -26,6 +22,7 @@ else()
     message(STATUS "Configuring for generic OpenCL")
     find_package(OpenCL REQUIRED)
 endif()
+
 # Windows OpenMP
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)

@@ -16,7 +16,6 @@ __kernel void path_trace_pixel_kernel(
     __global const float4* mesh_albedo,
     __global const float4* mesh_material)
 {
-    // Get global IDs
     uint x = get_global_id(0);
     uint y = get_global_id(1);
     

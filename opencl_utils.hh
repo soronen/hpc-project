@@ -23,34 +23,39 @@
 
 struct OpenCLContext
 {
-    cl_context       context      = nullptr;
-    cl_command_queue commandQueue = nullptr;
-    cl_program       program      = nullptr;
-    cl_device_id     deviceId       = nullptr;
+    cl_context context;
+    cl_command_queue commandQueue;
+    cl_program program;
+    cl_device_id deviceId;
 };
 
-// Returns a string describing the given OpenCL error code
+struct OpenCLBuffers
+{
+    cl_mem output_image;
+    cl_mem colors;
+    cl_mem subframes;
+    cl_mem instances;
+    cl_mem bvh_nodes;
+    cl_mem bvh_links;
+    cl_mem mesh_indices;
+    cl_mem mesh_pos;
+    cl_mem mesh_normal;
+    cl_mem mesh_albedo;
+    cl_mem mesh_material;
+};
+
 std::string getCLErrorString(cl_int error);
 
-// Reads the entire contents of a text file (e.g., *.cl) into a std::string
-std::string readFile(const std::string& filePath);
+std::string readFile(const std::string &filePath);
 
-// Create a context and command queue for OpenCL 1.2
-OpenCLContext createOpenCLContext(int platformIndex, int deviceIndex, cl_device_type deviceType);
+void buildOpenCLProgram(OpenCLContext &clCtx, const std::string &source, const char *buildOptions = nullptr);
 
-// Build (compile) an OpenCL 1.2 program from source
-void buildOpenCLProgram(OpenCLContext& clCtx, const std::string& source, const char* buildOptions = nullptr);
+cl_kernel createKernel(const OpenCLContext &clCtx, const std::string &kernelName);
 
-// Create a kernel by name
-cl_kernel createKernel(const OpenCLContext& clCtx, const std::string& kernelName);
-
-// (Optional) print platform information
 void printPlatformInfo();
-
-// (Optional) print device information
-void printDeviceInfo(cl_platform_id platform, cl_device_id device);
-
 
 std::vector<OpenCLContext> initializeOpenCLDevices();
 
-cl_program buildProgramForDevice(cl_context context, const std::string& source, cl_device_id device);
+cl_program buildProgramForDevice(cl_context context, const std::string &source, cl_device_id device);
+
+void cleanup_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context, const int exit_code);

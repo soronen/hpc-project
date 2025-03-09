@@ -47,7 +47,7 @@ void baseline_render(const scene &s, uchar4 *image)
     }
 }
 
-OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const OpenCLContext &cl_context)
+bool update_render_buffers(const scene &s, OpenCLBuffers &buffers, const OpenCLContext &cl_context)
 {
 
     cl_int err;
@@ -60,7 +60,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error creating output image buffer: %d\n", err);
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -72,7 +72,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error creating colors buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -103,7 +103,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_subframes_size = subframes_size;
         write_events[0] = NULL;
@@ -115,7 +115,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating subframes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -132,7 +132,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_instances_size = instances_size;
         write_events[1] = NULL;
@@ -144,7 +144,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating instances buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -161,7 +161,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_nodes_size = nodes_size;
         write_events[2] = NULL;
@@ -173,7 +173,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating BVH nodes buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -190,7 +190,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_links_size = links_size;
         write_events[3] = NULL;
@@ -202,7 +202,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating BVH links buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -219,7 +219,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_pos_size = pos_size;
         write_events[4] = NULL;
@@ -231,7 +231,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh positions buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -248,7 +248,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_normal_size = normal_size;
         write_events[5] = NULL;
@@ -260,7 +260,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh normals buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -277,7 +277,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_indices_size = indices_size;
         write_events[6] = NULL;
@@ -289,7 +289,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh indices buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -306,7 +306,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_albedo_size = albedo_size;
         write_events[7] = NULL;
@@ -318,7 +318,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh albedo buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
@@ -335,7 +335,7 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error recreating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
         last_material_size = material_size;
         write_events[8] = NULL;
@@ -347,25 +347,13 @@ OpenCLBuffers update_render_buffers(const scene &s, OpenCLBuffers buffers, const
         if (err != CL_SUCCESS)
         {
             fprintf(stderr, "Error updating mesh material buffer: %d (%s)\n", err, getCLErrorString(err).c_str());
-            release_resources_and_exit(buffers, cl_context, EXIT_FAILURE);
+            return false;
         }
     }
 
     clWaitForEvents(write_events.size(), write_events.data());
 
-    return {
-        buffers.output_image,
-        buffers.colors,
-        buffers.subframes,
-        buffers.instances,
-        buffers.bvh_nodes,
-        buffers.bvh_links,
-        buffers.mesh_indices,
-        buffers.mesh_pos,
-        buffers.mesh_normal,
-        buffers.mesh_albedo,
-        buffers.mesh_material,
-    };
+    return true;
 }
 
 void opencl_render(uchar4 *image,
@@ -594,7 +582,20 @@ int main(int argc, char **argv)
         {
 
             // Update buffers for the current frame
-            gpu_buffers[gpu_index] = update_render_buffers(s, gpu_buffers[gpu_index], gpu_contexts[gpu_index]);
+            bool result = update_render_buffers(s, gpu_buffers[gpu_index], gpu_contexts[gpu_index]);
+            if (!result)
+            {
+                fprintf(stderr, "Failed to update render buffers for frame %u on GPU %d\n", frame_index, gpu_index);
+                fprintf(stderr, "Exiting...\n");
+                for (size_t g = 0; g > gpu_contexts.size(); g++)
+                {
+                    cleanup_resources(gpu_buffers[g], gpu_contexts[g]);
+                }
+#ifdef USE_LUMI
+                MPI_Finalize();
+#endif
+                return 1;
+            }
 
             // Render the current frame
             opencl_render(image.get(),
@@ -625,8 +626,13 @@ int main(int argc, char **argv)
     {
         for (size_t g = 0; g > gpu_contexts.size(); g++)
         {
-            release_resources_and_exit(gpu_buffers[g], gpu_contexts[g], EXIT_SUCCESS);
+            cleanup_resources(gpu_buffers[g], gpu_contexts[g]);
         }
     }
+
+#ifdef USE_LUMI
+    fprintf(stderr, "Finalizing MPI\n");
+    MPI_Finalize();
+#endif
     return 0;
 }

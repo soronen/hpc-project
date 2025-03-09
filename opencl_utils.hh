@@ -58,5 +58,4 @@ std::vector<OpenCLContext> initializeOpenCLDevices();
 
 cl_program buildProgramForDevice(cl_context context, const std::string &source, cl_device_id device);
 
-void release_resources_and_exit(const OpenCLBuffers buffers, const OpenCLContext &context, const int exit_code);
-
+void cleanup_resources(const OpenCLBuffers buffers, const OpenCLContext &context);

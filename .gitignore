@@ -1,5 +1,6 @@
 output/
-build/
+build/*
+!build/.gitkeep
 cmake-build-debug/
 cmake-build-release/
 .vscode/
